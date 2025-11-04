@@ -1,4 +1,4 @@
-from basic import *
+from em.formalgeo.basic import *
 from sympy import symbols
 import random
 

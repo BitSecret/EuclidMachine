@@ -1,7 +1,7 @@
 import os
 
-from construction import *
-from tools import *
+from em.formalgeo.construction import *
+from em.formalgeo.tools import *
 
 
 def solve_problem(pid):
