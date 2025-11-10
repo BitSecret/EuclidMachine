@@ -188,16 +188,17 @@ Automatic Construction of Plane Geometry System without Human Supervision.
 这个代数关系表示。代数关系使用代数表达式定义，大致包含4类元素：
 1. 约束类型。5种约束类型分别为：等于0（Eq）、小于0（L）、小于等于0（Leq）、大于0（G）、大于等于0（Geq）、不等于0（Ueq）。使用时，将代
    数表达式置于约束内部，如`Eq(Sub(A.x,B.x))`。
-2. 逻辑运算。~~3种逻辑运算分别为：且（&）、或（|）、非（~）。我们可以使用逻辑运算将各种约束组合起来，如"Eq(expr)&(Leq(expr)|Geq(expr))"，括
-   号()可以用于描述算术优先级。~~当前版本只能用且（&）。
+2. 逻辑运算。 ~~3种逻辑运算分别为：且（&）、或（|）、非（~）。我们可以使用逻辑运算将各种约束组合起来，如"Eq(expr)&(Leq(expr)|Geq(expr))"，括
+   号()可以用于描述算术优先级。后续更新：注意，当前版本只能用且（&），不能使用或（|）、非（~）以及标志优先级的括号()。
 3. 代数计算。5种基础的代数计算为：加（Add(expr_1,expr_2,...,expr_n)）、减（Sub(expr_1,expr_2)）、乘（Mul(expr_1,expr_2,...,expr_n)）、
    除（Div(expr_1,expr_2)）、幂（Pow(expr_1,expr_2)）。此外，为了简化GDL中代数关系的定义，我们也可以定义一些扩展的代数计算，比如两点之间
    的距离定义为DPP(expr_x1,expr_y1,expr_x2,expr_y2)，来代替Pow(Add(Pow(Sub(expr_y2,expr_y1),2),Pow(Sub(expr_x2,expr_x1),2)),1/2)。
    扩展的代数计算：两点之间的距离DPP(expr_x1,expr_y1,expr_x2,expr_y2)、点到直线的距离DPL(expr_x,expr_y,expr_k,expr_b)、
    两线的夹角MA(expr_k1,expr_k2)、点的幂PP(expr_x,expr_y,expr_a,expr_b,expr_r)
 4. 实体参数和实数。只有实体的参数可以用于当前约束的定义，注意区分`constraints`定义的代数约束和`extend`中定义的代数关系的区别。`constraints`
-   定义的代数约束只包含实体参数，用于构图过程；`extend`中定义的代数关系只包含实体属性，用于推理过程。举例具体说明两者区别：
+   定义的代数约束只包含实体参数，用于构图过程；`extend`中定义的代数关系只包含实体属性，用于推理过程。
 
+使用角相等的定义说明代数约束和代数关系的区别：  
 
     "EqualAngle(a,b,l,k)": {
       "type": "basic",

@@ -1,21 +1,11 @@
-import os
-
-from em.formalgeo.construction import *
-from em.formalgeo.tools import *
+from em.formalgeo.problem import Problem
+from em.formalgeo.tools import load_json, save_json, parse_gdl, save_readable_parsed_gdl
 
 
-def solve_problem(pid):
-    problem = load_json(f"../../../data/imo sl/{pid}.json")
-
-    figure = Figure(seed=problem['seed'])
-    for sentence in problem['construction_cdl']:
-        added = figure.add(sentence)
-        print(f"{sentence}, success={added}")
-    print()
-
-    figure.show()
-    figure.draw()
+save_readable_parsed_gdl(
+    parse_gdl(load_json('../../../data/gdl/gdl.json')),
+    '../../../data/gdl/parsed_gdl.json')
 
 
-if __name__ == '__main__':
-    solve_problem(pid=2)
+# problem = Problem(parse_gdl(load_json('../../../data/gdl/gdl.json')))
+# problem.construct("Point(A)")
