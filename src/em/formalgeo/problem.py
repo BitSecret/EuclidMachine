@@ -30,7 +30,7 @@ def _get_dependent_entities(predicate, instance, parsed_gdl):
                 dependent_entities.append((predicate, instance))
     else:
         for i in range(len(instance)):
-            dependent_entities.append((parsed_gdl['Relation'][predicate]['ee_check'][i], instance[i]))
+            dependent_entities.append((parsed_gdl['Relations'][predicate]['ee_check'][i], instance[i]))
     return list(set(dependent_entities))
 
 
@@ -76,11 +76,11 @@ class Problem:
             3.premise_ids (tuple): The premise of the current fact.
             4.entity_ids (tuple): The dependent entities of the current fact.
             5.operation_id (int): The operation that yielded the current fact.
-        examples: [('Point', ('A',), (,), (,), 0),  # free entity
-                   ('Line', ('l',), (,), (3, 6), 3),  # constructed entity
-                   ('PointOnLine', ('A', 'l'), (,), (3, 6), 3),  # initial geometric relations
+        examples: [('Point', 'A', (,), (,), 0),  # free entity
+                   ('Line', 'l', (,), (3, 6), 3),  # constructed entity
+                   ('PointOnLine', ('A', 'l'), (3,), (3, 6), 3),  # initial geometric relations
                    ('Perpendicular', ('l', 'm'), (7, 8, 9), (2, 3), 6),  # inferred geometric relations
-                   ('Equation', 'MeasureOfAngle(lk)-1', (10, 11), (1, 4), 8)]  # algebraic relations
+                   ('Equation', 'lk.ma-1', (10, 11), (1, 4), 8)]  # algebraic relations
 
         self.id (dict): (predicate, instance) -> fact_id. Mapping from fact to fact_id.
         examples: {('Point', ('A',)): 0, ('PointOnLine', ('A', 'l')): 5, ('Equation', 'MeasureOfAngle(lk)-1'): 12}
@@ -183,8 +183,11 @@ class Problem:
         self.value_of_sym = {}  # sym -> value
         self.equations = []  # [[simplified_equation, original_equation_fact_id, dependent_equation_fact_ids]]
 
+    def _has(self, predicate, instance):
+        return instance in self.instances_of_predicate[predicate]
+
     def _add(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        if (predicate, instance) in self.id:
+        if self._has(predicate, instance):
             return False
 
         fact_id = len(self.facts)
@@ -197,21 +200,19 @@ class Problem:
         if predicate == 'Equation':
             return True
 
-        replace = dict(zip(self.parsed_gdl['Relation'][predicate]['paras'], instance))
+        replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
 
         operation_id = len(self.operations)
         self.operations.append('auto_extend')
         self.groups[operation_id] = []
 
-        for predicate, instance in self.parsed_gdl['Relation'][predicate]['extend']:
+        for predicate, instance in self.parsed_gdl['Relations'][predicate]['extend']:
             if predicate == 'Equation':
                 instance = replace_expr(instance, replace)
             else:
                 instance = tuple(replace_paras(instance, replace))
-            entity_ids = []
-            for d_predicate, d_instance in _get_dependent_entities(predicate, instance, self.parsed_gdl):
-                entity_ids.append(self.id[(d_predicate, (d_instance,))])
-            self._add(predicate, instance, (fact_id,), tuple(entity_ids), operation_id)
+            entity_ids = tuple(self._get_entity_ids(predicate, instance))
+            self._add(predicate, instance, (fact_id,), entity_ids, operation_id)
 
         return True
 
@@ -290,10 +291,8 @@ class Problem:
 
         # add relation to self.facts
         for predicate, instance in added_facts:
-            entity_ids = []
-            for d_predicate, d_instance in _get_dependent_entities(predicate, instance, self.parsed_gdl):
-                entity_ids.append(self.id[(d_predicate, (d_instance,))])
-            self._add(predicate, instance, premise_ids, tuple(entity_ids), operation_id)
+            entity_ids = tuple(self._get_entity_ids(predicate, instance))
+            self._add(predicate, instance, premise_ids, entity_ids, operation_id)
 
         # add (t_entity, i_entities, d_entities, constraints, solved_values) to self.constructions
         self.constructions.append((t_entity, i_entities, d_entities, constraints, tuple(solved_values)))
@@ -347,19 +346,19 @@ class Problem:
                 parsed_constraints.append((algebra_relation, expr))  # 通过检查，添加到parsed_constraints
             else:  # predefined constraint
                 constraint_name, constraint_paras = parse_predicate(constraint)
-                if constraint_name not in self.parsed_gdl['Relation']:  # 约束是否存在
+                if constraint_name not in self.parsed_gdl['Relations']:  # 约束是否存在
                     e_msg = f"Unknown constraint: '{constraint}."
                     raise Exception(e_msg)
-                if len(constraint_paras) != len(self.parsed_gdl['Relation'][constraint_name]["paras"]):  # 参数数量是否正确
+                if len(constraint_paras) != len(self.parsed_gdl['Relations'][constraint_name]["paras"]):  # 参数数量是否正确
                     e_msg = (f"Incorrect number of paras: '{constraint}'. "
-                             f"Expected: {len(self.parsed_gdl['Relation'][constraint_name]['paras'])}, "
+                             f"Expected: {len(self.parsed_gdl['Relations'][constraint_name]['paras'])}, "
                              f"Actual: {len(constraint_paras)}.")
                     raise Exception(e_msg)
 
                 has_target_entity = False
                 has_implicit_entity = False
                 for i in range(len(constraint_paras)):
-                    predicate = self.parsed_gdl['Relation'][constraint_name]["ee_check"][i]
+                    predicate = self.parsed_gdl['Relations'][constraint_name]["ee_check"][i]
                     if len(constraint_paras[i]) == 1:
                         if constraint_paras[i] == target_entity[1] and target_entity[0] == predicate:  # 是要构建的实体
                             has_target_entity = True
@@ -603,24 +602,135 @@ class Problem:
 
         return tuple(solved_value)
 
+    def _get_entity_ids(self, predicate, instance):
+        entity_ids = []
+        for d_predicate, d_instance in _get_dependent_entities(predicate, instance, self.parsed_gdl):
+            entity_ids.append(self.id[(d_predicate, (d_instance,))])
+        return entity_ids
+
     def apply(self, theorem):
-        """执行复杂的多步计算。
-        这里是详细的功能描述，可以跨越多行。
-        第二段通常描述实现细节或算法原理。
-        3.通过construction部分的构建或solver部分的推理，得到新的fact
+        """Apply a theorem.
+        1.这里是详细的功能描述，可以跨越多行。
+        2.第二段通常描述实现细节或算法原理。
+        3.solver部分的推理，得到新的fact
 
         Args:
-            theorem (str): 字符串列表，描述...
+            theorem (str): Theorem to be applied. Two forms: a parameterized form and a parameter-free form.
+            examples: 'adjacent_complementary_angle(l,k)'  # parameterized form
+                      'adjacent_complementary_angle'  # parameter-free form
 
         Returns:
             result (bool): If applying the theorem adds new conditions, return True; otherwise, return False.
-
-        Raises:
-            TypeError: 如果参数类型错误
-            RuntimeError: 如果计算过程中出现异常
-
-        Example:
-            >>> self.apply("theorem_name")
-            'theorem_name'
         """
-        pass
+        add_new_fact = False
+
+        if '(' in theorem:  # parameterized form
+            theorem_name, theorem_paras = parse_predicate(theorem)
+            theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
+            replace = dict(zip(theorem_gdl['paras'], theorem_paras))
+
+            # EE check
+            passed, premise_ids = self._pass_ee_check(theorem_gdl, replace)
+            if not passed:
+                return False
+
+            # AC check
+            passed = self._pass_ac_check(theorem_gdl, replace)
+            if not passed:
+                return False
+
+            # geometric premise
+            passed, geometric_premise_ids = self._pass_geometric_premise(theorem_gdl, replace)
+            if not passed:
+                return False
+            premise_ids += geometric_premise_ids
+
+            # algebraic premise
+            passed, algebraic_premise_ids = self._pass_algebraic_premise(theorem_gdl, replace)
+            if not passed:
+                return False
+            premise_ids += algebraic_premise_ids
+
+            # add theorem to self.operations
+            operation_id = len(self.operations)
+            self.operations.append(theorem)
+            self.groups[operation_id] = []
+
+            # add geometric conclusion
+            for predicate, instance in theorem_gdl['geometric_conclusion']:
+                instance = tuple(replace_paras(instance, replace))
+                entity_ids = tuple(self._get_entity_ids(predicate, instance))
+                add_new_fact = self._add(predicate, instance, premise_ids, entity_ids, operation_id) or add_new_fact
+
+            # add algebraic conclusion
+            for expr in theorem_gdl['algebraic_conclusion']:
+                expr = tuple(replace_expr(expr, replace))
+                entity_ids = tuple(self._get_entity_ids('Equation', expr))
+                add_new_fact = self._add('Equation', expr, premise_ids, entity_ids, operation_id) or add_new_fact
+        else:  # parameter-free form
+            theorem_name = theorem
+            theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
+
+            # geometric predicate logic
+            gpl = list(theorem_gdl['geometric_premise'])
+            for i in range(len(theorem_gdl['paras'])):
+                gpl.append((theorem_gdl['ee_check'][i], [theorem_gdl['paras'][i]]))
+
+            # run geometric predicate logic
+            results = self._run_gpl(gpl, theorem_gdl['paras'])
+
+            # ac check
+            checked_results = []
+            for _, instance in results:
+                pass
+            results = checked_results
+
+            # check algebraic premise
+            checked_results = []
+            for _, instance in results:
+                pass
+            results = checked_results
+
+            # 添加到结论
+
+        return add_new_fact
+
+    def _pass_ee_check(self, theorem_gdl, replace):
+        premise_ids = []
+        for i in range(len(theorem_gdl['paras'])):
+            predicate = theorem_gdl['ee_check'][i]
+            instance = (replace[theorem_gdl['paras'][i]],)
+            if not self._has(predicate, instance):
+                return False, None
+            premise_ids.append(self.id[(predicate, instance)])
+        return True, premise_ids
+
+    def _pass_ac_check(self, theorem_gdl, replace):
+        constraints = {'Eq': [], 'G': [], 'Geq': [], 'L': [], 'Leq': [], 'Ueq': []}
+        for algebraic_type in theorem_gdl['ac_check']:
+            for constraint in theorem_gdl['ac_check'][algebraic_type]:
+                constraints[algebraic_type].append(replace_expr(constraint, replace))
+        return _satisfy_constraints(self.value_of_sym, constraints)
+
+    def _pass_geometric_premise(self, theorem_gdl, replace):
+        premise_ids = []
+        for predicate, instance in theorem_gdl['geometric_premise']:
+            instance = replace_paras(instance, replace)
+            if not self._has(predicate, tuple(instance)):
+                return False, None
+            premise_ids.append(self.id[(predicate, tuple(instance))])
+        return True, premise_ids
+
+    def _pass_algebraic_premise(self, theorem_gdl, replace):
+        constraints = []
+        premise_ids = []
+        for constraint in theorem_gdl['algebraic_premise']:
+            constraints.append(replace_expr(constraint, replace))
+        satisfied, algebraic_premise_ids = self._satisfy_algebraic_constraints(constraints)  # 定义在此函数即可
+        if not satisfied:
+            return False, None
+        return True, premise_ids
+
+    def _run_gpl(self, gpl, paras):
+        result = []  # ([premise_ids], instance)
+        return result

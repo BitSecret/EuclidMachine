@@ -33,13 +33,13 @@ letters_l = tuple(list(_ll) + list(_lsl) + list(_gl) + list(_gil) + list(_lu) + 
 letters_c = tuple(list(_gu) + list(_giu) + list(_lu) + list(_lsu) + list(_gl) + list(_gil) + list(_ll) + list(_lsl))
 
 
-def load_json(file_path_and_name):
-    with open(file_path_and_name, "r", encoding="utf-8") as f:
+def load_json(filename):
+    with open(filename, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def save_json(data, file_path_and_name):
-    with open(file_path_and_name, "w", encoding="utf-8") as f:
+def save_json(data, filename):
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
@@ -87,15 +87,11 @@ def save_readable_parsed_gdl(parsed_gdl, filename):
             for i in range(len(theorem['ac_check'][constraint_class])):
                 theorem['ac_check'][constraint_class][i] = str(theorem['ac_check'][constraint_class][i])
 
-        for i in range(len(theorem['premise'])):
-            predicate_name, para = theorem['premise'][i]
-            if predicate_name == 'Equation':
-                theorem['premise'][i] = (predicate_name, str(para))
+        for i in range(len(theorem['algebraic_premise'])):
+            theorem['algebraic_premise'][i] = str(theorem['algebraic_premise'][i])
 
-        for i in range(len(theorem['conclusion'])):
-            predicate_name, para = theorem['conclusion'][i]
-            if predicate_name == 'Equation':
-                theorem['conclusion'][i] = (predicate_name, str(para))
+        for i in range(len(theorem['algebraic_conclusion'])):
+            theorem['algebraic_conclusion'][i] = str(theorem['algebraic_conclusion'][i])
 
     save_json(parsed_gdl, filename)
 
@@ -239,33 +235,37 @@ def _parse_one_theorem(theorem, gdl, parsed_gdl):
             algebra_relation, expr = parse_algebra(constraint)
             theorem_ac_check[algebra_relation].append(expr)
 
-    theorem_premise = []
+    theorem_geometric_premise = []
+    theorem_algebraic_premise = []
 
     if len(gdl['Theorems'][theorem]['premise']) > 0:
         for premise in gdl['Theorems'][theorem]['premise'].split('&'):
             if premise.startswith('Eq('):
-                premise_name = 'Equation'
-                _, premise_paras = parse_algebra(premise)
+                _, expr = parse_algebra(premise)
+                theorem_algebraic_premise.append(expr)
             else:
                 premise_name, premise_paras = parse_predicate(premise)
-            theorem_premise.append([premise_name, premise_paras])
+                theorem_geometric_premise.append([premise_name, premise_paras])
 
-    theorem_conclusion = []
+    theorem_geometric_conclusion = []
+    theorem_algebraic_conclusion = []
     for conclusion in gdl['Theorems'][theorem]['conclusion']:
         if conclusion.startswith('Eq('):
-            conclusion_name = 'Equation'
-            _, conclusion_paras = parse_algebra(conclusion)
+            _, expr = parse_algebra(conclusion)
+            theorem_algebraic_conclusion.append(expr)
         else:
             conclusion_name, conclusion_paras = parse_predicate(conclusion)
-        theorem_conclusion.append([conclusion_name, conclusion_paras])
+            theorem_geometric_conclusion.append([conclusion_name, conclusion_paras])
 
     parsed_gdl['Theorems'][theorem_name] = {
         'type': theorem_type,
         'paras': theorem_paras,
         'ee_check': theorem_ee_check,
         'ac_check': theorem_ac_check,
-        'premise': theorem_premise,
-        'conclusion': theorem_conclusion
+        'geometric_premise': theorem_geometric_premise,
+        'algebraic_premise': theorem_algebraic_premise,
+        'geometric_conclusion': theorem_geometric_conclusion,
+        'algebraic_conclusion': theorem_algebraic_conclusion
     }
 
 
@@ -410,70 +410,5 @@ def find_possible_relations(problem):
 
 
 if __name__ == '__main__':
-    # print(cos(0))
-    # print(cos(pi / 4))
-    # print(cos(pi / 2))
-    # print(cos(pi / 4 * 3))
-    # print(cos(pi))
-    #
-    # print(acos(1))
-    # print(acos(sqrt(2) / 2))
-    # print(acos(0))
-    # print(acos(-sqrt(2) / 2))
-    # pri
-
-    # x1, x2, x3 = symbols('x1000000000000000 x2 x3')
-    # print(x1)
-    # print(x2)
-    # print(x3)
-    # f1 = x1 + x2 + x3
-    # print(f1)
-    # print(f1.subs({x1: x2, x2: x3}))
-    # print(f1)
-
-    # entity_temp = symbols("abc.e")
-    # entity_replaced = symbols("abc.e")
-    # print(entity_temp == entity_replaced)
-
     save_readable_parsed_gdl(parse_gdl(load_json('../../../data/gdl/gdl.json')),
                              '../../../data/gdl/parsed_gdl.json')
-
-    # print(parse_predicate("PointOnLine(A,l)"))
-    # print(parse_predicate("PointOnLine(A,l)", {'l': 'k'}))
-    # print()
-    #
-    # print(parse_algebra("Eq(Sub(A.x,B.x))"))
-    # print(parse_algebra("Eq(Sub(MA(a.k,b.k),MA(l.k,k.k)))"))
-    # print(parse_algebra("Eq(Sub(DPP(A.x,A.y,B.x,B.y),DPP(C.x,C.y,D.x,D.y)))"))
-    # print(parse_algebra("Eq(Sub(DPP(A.x,A.y,B.x,B.y),DPP(C.x,C.y,D.x,D.y)))", {'C': 'X', 'D': 'A', 'A': 'D'}))
-    # print()
-    #
-    # print(_parse_logical("PointOnCircle(M,O)&EqualDistance(M,A,M,B)&PointLeftSegment(M,B,A)"))
-    # print(_parse_logical("PointOnCircle(M,O)"))
-    # print()
-
-    # _, a = parse_algebra("Eq(Sub(DPP(A.x,A.y,B.x,B.y),DPP(C.x,C.y,D.x,D.y)))")
-    # print(a)
-    # print(replace_expr(a, {'B': 'A', 'A': 'X'}))
-    # print()
-    # _, a = parse_algebra("Eq(Sub(AB.dbp,CD.dbp))")
-    # print(a)
-    # print(replace_expr(a, {'B': 'A', 'A': 'X'}))
-
-    # f = 0.25846578
-    # frac3 = nsimplify(f, tolerance=1e-2)  # 容差1e-2就可以了
-    # print(f"容差1e-3: {frac3}≈{float(frac3)}")  # 104348/33215
-
-    # entity, constraints_str = 'Point(A):'.split(':')
-    # print(entity)
-    # print(len(constraints_str))
-
-    # a, b, c = symbols("a b c")
-    #
-    # print(nonlinsolve([a - 3], [a, b, c]))
-
-    # random_k = nsimplify(tan(random.uniform(-89, 89) * pi / 180), tolerance=1e-2)
-    # print(type(random_k))
-    # print(float(random_k))
-
-    print(2 ** 2)

@@ -189,7 +189,7 @@ Automatic Construction of Plane Geometry System without Human Supervision.
 1. 约束类型。5种约束类型分别为：等于0（Eq）、小于0（L）、小于等于0（Leq）、大于0（G）、大于等于0（Geq）、不等于0（Ueq）。使用时，将代
    数表达式置于约束内部，如`Eq(Sub(A.x,B.x))`。
 2. 逻辑运算。 ~~3种逻辑运算分别为：且（&）、或（|）、非（~）。我们可以使用逻辑运算将各种约束组合起来，如"Eq(expr)&(Leq(expr)|Geq(expr))"，括
-   号()可以用于描述算术优先级。后续更新：注意，当前版本只能用且（&），不能使用或（|）、非（~）以及标志优先级的括号()。
+   号()可以用于描述算术优先级。~~ 后续更新：注意，当前版本只能用且（&），不能使用或（|）、非（~）以及标志优先级的括号()。
 3. 代数计算。5种基础的代数计算为：加（Add(expr_1,expr_2,...,expr_n)）、减（Sub(expr_1,expr_2)）、乘（Mul(expr_1,expr_2,...,expr_n)）、
    除（Div(expr_1,expr_2)）、幂（Pow(expr_1,expr_2)）。此外，为了简化GDL中代数关系的定义，我们也可以定义一些扩展的代数计算，比如两点之间
    的距离定义为DPP(expr_x1,expr_y1,expr_x2,expr_y2)，来代替Pow(Add(Pow(Sub(expr_y2,expr_y1),2),Pow(Sub(expr_x2,expr_x1),2)),1/2)。
