@@ -1,0 +1,8645 @@
+{
+  "Entities": {
+    "Point": {
+      "paras": [
+        "A"
+      ],
+      "temporary": []
+    },
+    "Line": {
+      "paras": [
+        "l"
+      ],
+      "temporary": [
+        "AB",
+        "A;l"
+      ]
+    },
+    "Circle": {
+      "paras": [
+        "O"
+      ],
+      "temporary": [
+        "ABC",
+        "O;AB"
+      ]
+    }
+  },
+  "sym_to_measure": {
+    "x": "XCoordinateOfPoint",
+    "y": "YCoordinateOfPoint",
+    "k": "KOfLine",
+    "b": "BOfLine",
+    "u": "CenterAOfCircle",
+    "v": "CenterBOfCircle",
+    "rad": "RadiusOfCircle",
+    "dpp": "DistanceBetweenPointAndPoint",
+    "dpl": "DistanceBetweenPointAndLine",
+    "dpc": "DistanceBetweenPointAndCircle",
+    "ma": "MeasureOfAngle"
+  },
+  "Measures": {
+    "XCoordinateOfPoint": {
+      "type": "parameter",
+      "paras": [
+        "A"
+      ],
+      "ee_check": [
+        "Point"
+      ],
+      "sym": "x"
+    },
+    "YCoordinateOfPoint": {
+      "type": "parameter",
+      "paras": [
+        "A"
+      ],
+      "ee_check": [
+        "Point"
+      ],
+      "sym": "y"
+    },
+    "KOfLine": {
+      "type": "parameter",
+      "paras": [
+        "l"
+      ],
+      "ee_check": [
+        "Line"
+      ],
+      "sym": "k"
+    },
+    "BOfLine": {
+      "type": "parameter",
+      "paras": [
+        "l"
+      ],
+      "ee_check": [
+        "Line"
+      ],
+      "sym": "b"
+    },
+    "CenterAOfCircle": {
+      "type": "parameter",
+      "paras": [
+        "O"
+      ],
+      "ee_check": [
+        "Circle"
+      ],
+      "sym": "u"
+    },
+    "CenterBOfCircle": {
+      "type": "parameter",
+      "paras": [
+        "O"
+      ],
+      "ee_check": [
+        "Circle"
+      ],
+      "sym": "v"
+    },
+    "RadiusOfCircle": {
+      "type": "attribution",
+      "paras": [
+        "O"
+      ],
+      "ee_check": [
+        "Circle"
+      ],
+      "sym": "rad"
+    },
+    "DistanceBetweenPointAndPoint": {
+      "type": "attribution",
+      "paras": [
+        "A",
+        "B"
+      ],
+      "ee_check": [
+        "Point",
+        "Point"
+      ],
+      "sym": "dpp"
+    },
+    "DistanceBetweenPointAndLine": {
+      "type": "attribution",
+      "paras": [
+        "A",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Line"
+      ],
+      "sym": "dpl"
+    },
+    "DistanceBetweenPointAndCircle": {
+      "type": "attribution",
+      "paras": [
+        "A",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle"
+      ],
+      "sym": "dpc"
+    },
+    "MeasureOfAngle": {
+      "type": "attribution",
+      "paras": [
+        "l",
+        "k"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "sym": "ma"
+    }
+  },
+  "Relations": {
+    "FreePoint": {
+      "type": "basic",
+      "paras": [
+        "A"
+      ],
+      "ee_check": [
+        "Point"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "FreeLine": {
+      "type": "basic",
+      "paras": [
+        "a"
+      ],
+      "ee_check": [
+        "Line"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "FreeCircle": {
+      "type": "basic",
+      "paras": [
+        "O"
+      ],
+      "ee_check": [
+        "Circle"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SamePoint": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B"
+      ],
+      "ee_check": [
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "SamePoint",
+          [
+            "B",
+            "A"
+          ]
+        ],
+        [
+          "Equation",
+          "AB.dpp"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "A.y",
+          "A.x"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointOnLine": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Line"
+      ],
+      "extend": [
+        [
+          "Equation",
+          "Al.dpl"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-A.x*l.k + A.y - l.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointFrontSegment": {
+      "type": "indirect",
+      "paras": [
+        "A",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "Pointfrontofsegment",
+          [
+            "B",
+            "A",
+            "C"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [
+          "l"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-A.x*l.k + A.y - l.b",
+          "-C.x*l.k + C.y - l.b",
+          "-B.x*l.k + B.y - l.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(A.x - C.x)*(B.x - C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointLeftSegment": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "PointLeftSegment",
+          [
+            "B",
+            "C",
+            "A"
+          ]
+        ],
+        [
+          "PointLeftSegment",
+          [
+            "C",
+            "A",
+            "B"
+          ]
+        ],
+        [
+          "PointRightSegment",
+          [
+            "A",
+            "C",
+            "B"
+          ]
+        ],
+        [
+          "PointRightSegment",
+          [
+            "B",
+            "A",
+            "C"
+          ]
+        ],
+        [
+          "PointRightSegment",
+          [
+            "C",
+            "B",
+            "A"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [
+          "-(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointRightSegment": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "PointRightSegment",
+          [
+            "B",
+            "C",
+            "A"
+          ]
+        ],
+        [
+          "PointRightSegment",
+          [
+            "C",
+            "A",
+            "B"
+          ]
+        ],
+        [
+          "PointLeftSegment",
+          [
+            "A",
+            "C",
+            "B"
+          ]
+        ],
+        [
+          "PointLeftSegment",
+          [
+            "B",
+            "A",
+            "C"
+          ]
+        ],
+        [
+          "PointLeftSegment",
+          [
+            "C",
+            "B",
+            "A"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "ClockwiseTriangle": {
+      "type": "composite",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "ClockwiseTriangle",
+          [
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "PointRightSegment",
+          [
+            "C",
+            "A",
+            "B"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointInSegment": {
+      "type": "indirect",
+      "paras": [
+        "A",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "PointFrontSegment",
+          [
+            "C",
+            "B",
+            "A"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [
+          "l"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-C.x*l.k + C.y - l.b",
+          "-A.x*l.k + A.y - l.b",
+          "-B.x*l.k + B.y - l.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.x + C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SegmentEqualSegment": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "A",
+            "C",
+            "D"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "D",
+            "A",
+            "B"
+          ]
+        ],
+        [
+          "Equation",
+          "AB.dpp - CD.dpp"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "sqrt((A.x - B.x)**2 + (A.y - B.y)**2) - sqrt((C.x - D.x)**2 + (C.y - D.y)**2)"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointMidOfSegment": {
+      "type": "indirect",
+      "paras": [
+        "A",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "A",
+            "C"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [
+          "l"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "sqrt((A.x - B.x)**2 + (A.y - B.y)**2) - sqrt((A.x - C.x)**2 + (A.y - C.y)**2)",
+          "-A.x*l.k + A.y - l.b",
+          "-C.x*l.k + C.y - l.b",
+          "-B.x*l.k + B.y - l.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointInAngle": {
+      "type": "indirect",
+      "paras": [
+        "A",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [
+          "S"
+        ],
+        "Line": [
+          "n"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-(180*atan(l.k) - 180*atan(m.k))/pi + (180*atan(l.k) - 180*atan(n.k))/pi + (-180*atan(m.k) + 180*atan(n.k))/pi",
+          "-A.x*n.k + A.y - n.b",
+          "-S.x*n.k + S.y - n.b",
+          "-S.x*m.k + S.y - m.b",
+          "-S.x*l.k + S.y - l.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointOutnAngle": {
+      "type": "indirect",
+      "paras": [
+        "A",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [
+          "S"
+        ],
+        "Line": [
+          "n"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-(-180*atan(l.k) + 180*atan(n.k))/pi - (180*atan(l.k) - 180*atan(m.k))/pi + (-180*atan(m.k) + 180*atan(n.k))/pi",
+          "-A.x*n.k + A.y - n.b",
+          "-S.x*n.k + S.y - n.b",
+          "-S.x*m.k + S.y - m.b",
+          "-S.x*l.k + S.y - l.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointIsCircleCenter": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "Equation",
+          "AO.dpc"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "A.y - O.v",
+          "A.x - O.u"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointOnCircle": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "Equation",
+          "AO.dpc - O.rad"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-O.r + sqrt((A.x - O.u)**2 + (A.y - O.v)**2)"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointInCircle": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-O.r + sqrt((A.x - O.u)**2 + (A.y - O.v)**2)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointOutCircle": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [
+          "-O.r + sqrt((A.x - O.u)**2 + (A.y - O.v)**2)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointonArc": {
+      "type": "composite",
+      "paras": [
+        "A",
+        "O",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "PointLeftSegment",
+          [
+            "A",
+            "C",
+            "B"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-O.r + sqrt((C.x - O.u)**2 + (C.y - O.v)**2)",
+          "-O.r + sqrt((B.x - O.u)**2 + (B.y - O.v)**2)",
+          "-O.r + sqrt((A.x - O.u)**2 + (A.y - O.v)**2)"
+        ],
+        "G": [
+          "-(A.x - C.x)*(B.y - C.y) + (A.y - C.y)*(B.x - C.x)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointMidArc": {
+      "type": "composite",
+      "paras": [
+        "A",
+        "O",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "A",
+            "A",
+            "C"
+          ]
+        ],
+        [
+          "PointonArc",
+          [
+            "A",
+            "O",
+            "B",
+            "C"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "sqrt((-A.x + B.x)**2 + (-A.y + B.y)**2) - sqrt((A.x - C.x)**2 + (A.y - C.y)**2)",
+          "-O.r + sqrt((C.x - O.u)**2 + (C.y - O.v)**2)",
+          "-O.r + sqrt((B.x - O.u)**2 + (B.y - O.v)**2)",
+          "-O.r + sqrt((A.x - O.u)**2 + (A.y - O.v)**2)"
+        ],
+        "G": [
+          "-(A.x - C.x)*(B.y - C.y) + (A.y - C.y)*(B.x - C.x)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointInClockwiseTriangle": {
+      "type": "composite",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "PointRightSegment",
+          [
+            "P",
+            "B",
+            "C"
+          ]
+        ],
+        [
+          "PointRightSegment",
+          [
+            "P",
+            "C",
+            "A"
+          ]
+        ],
+        [
+          "PointRightSegment",
+          [
+            "P",
+            "A",
+            "B"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-B.x + C.x)*(-B.y + P.y) - (-B.x + P.x)*(-B.y + C.y)",
+          "(A.x - C.x)*(-C.y + P.y) - (A.y - C.y)*(-C.x + P.x)",
+          "(-A.x + B.x)*(-A.y + P.y) - (-A.x + P.x)*(-A.y + B.y)",
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "LinesPerpendicular": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "LinesPerpendicular",
+          [
+            "b",
+            "a"
+          ]
+        ],
+        [
+          "Equation",
+          "ab.ma - 90"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "a.k*b.k + 1"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "LineIsPerpendicularBisectorOfSegment": {
+      "type": "indirect",
+      "paras": [
+        "l",
+        "A",
+        "B"
+      ],
+      "ee_check": [
+        "Line",
+        "Point",
+        "Point"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [
+          "D"
+        ],
+        "Line": [
+          "c"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "c.k*l.k + 1",
+          "-D.x*l.k + D.y - l.b",
+          "sqrt((-A.x + D.x)**2 + (-A.y + D.y)**2) - sqrt((-B.x + D.x)**2 + (-B.y + D.y)**2)",
+          "-C.b - C.k*D.x + D.y",
+          "-B.x*C.k + B.y - C.b",
+          "-A.x*C.k + A.y - C.b",
+          "-B.x*c.k + B.y - c.b",
+          "-A.x*c.k + A.y - c.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointIsCircumcenterOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "PointIsCircumcenterOfClockwiseTriangle",
+          [
+            "P",
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "PointIsCircumcenterOfClockwiseTriangle",
+          [
+            "P",
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [
+          "D"
+        ],
+        "Line": [
+          "n",
+          "m"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "E.k*m.k + 1",
+          "-D.x*m.k + D.y - m.b",
+          "sqrt((-B.x + D.x)**2 + (-B.y + D.y)**2) - sqrt((-C.x + D.x)**2 + (-C.y + D.y)**2)",
+          "-C.b - C.k*D.x + D.y",
+          "-C.b - C.k*C.x + C.y",
+          "-B.x*C.k + B.y - C.b",
+          "-C.x*E.k + C.y - E.b",
+          "-B.x*E.k + B.y - E.b",
+          "G.k*n.k + 1",
+          "-F.x*n.k + F.y - n.b",
+          "sqrt((-A.x + F.x)**2 + (-A.y + F.y)**2) - sqrt((-B.x + F.x)**2 + (-B.y + F.y)**2)",
+          "-C.b - C.k*F.x + F.y",
+          "-B.x*C.k + B.y - C.b",
+          "-A.x*C.k + A.y - C.b",
+          "-B.x*G.k + B.y - G.b",
+          "-A.x*G.k + A.y - G.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "AngleEqualAngle": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "AngleEqualAngle",
+          [
+            "b",
+            "a",
+            "d",
+            "c"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "d",
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "Equation",
+          "ab.ma - cd.ma"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "(180*atan(a.k) - 180*atan(b.k))/pi - (180*atan(c.k) - 180*atan(d.k))/pi"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointIsIncenterOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "PointIsIncenterOfClockwiseTriangle",
+          [
+            "P",
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "PointIsIncenterOfClockwiseTriangle",
+          [
+            "P",
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [
+          "n",
+          "m"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "-C.x*m.k + C.y - m.b",
+          "-(-180*atan(a.k) + 180*atan(m.k))/pi + (180*atan(b.k) - 180*atan(m.k))/pi",
+          "-A.x*n.k + A.y - n.b",
+          "-(-180*atan(b.k) + 180*atan(n.k))/pi + (180*atan(c.k) - 180*atan(n.k))/pi"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointIsCentroidOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "PointIsCentroidOfClockwiseTriangle",
+          [
+            "P",
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "PointIsCentroidOfClockwiseTriangle",
+          [
+            "P",
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [
+          "D",
+          "E"
+        ],
+        "Line": [
+          "n",
+          "m",
+          "l"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "-E.x*m.k + E.y - m.b",
+          "-B.x*m.k + B.y - m.b",
+          "-D.x*n.k + D.y - n.b",
+          "-A.x*n.k + A.y - n.b",
+          "sqrt((-A.x + E.x)**2 + (-A.y + E.y)**2) - sqrt((-C.x + E.x)**2 + (-C.y + E.y)**2)",
+          "-E.x*l.k + E.y - l.b",
+          "-C.x*l.k + C.y - l.b",
+          "-A.x*l.k + A.y - l.b",
+          "sqrt((-B.x + D.x)**2 + (-B.y + D.y)**2) - sqrt((-C.x + D.x)**2 + (-C.y + D.y)**2)",
+          "-D.x*F.k + D.y - F.b",
+          "-C.x*F.k + C.y - F.b",
+          "-B.x*F.k + B.y - F.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointIsOrthocenterOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "PointIsOrthocenterOfClockwiseTriangle",
+          [
+            "P",
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "PointIsOrthocenterOfClockwiseTriangle",
+          [
+            "P",
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [
+          "n",
+          "m"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "-B.x*m.k + B.y - m.b",
+          "b.k*m.k + 1",
+          "-A.x*n.k + A.y - n.b",
+          "a.k*n.k + 1"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "PointIsFirstExcenterOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [
+          "n",
+          "m"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "-B.x*m.k + B.y - m.b",
+          "-(-180*atan(a.k) + 180*atan(m.k))/pi + (180*atan(c.k) - 180*atan(m.k))/pi",
+          "-A.x*n.k + A.y - n.b",
+          "-(-180*atan(b.k) + 180*atan(n.k))/pi + (180*atan(c.k) - 180*atan(n.k))/pi"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SameLine": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "SameLine",
+          [
+            "b",
+            "a"
+          ]
+        ],
+        [
+          "Equation",
+          "ab.ma"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "a.b - b.b",
+          "a.k - b.k"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "LinesParallel": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "Equation",
+          "ab.ma"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "a.k - b.k"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "LineIsAngleBisector": {
+      "type": "indirect",
+      "paras": [
+        "l",
+        "a",
+        "b"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "l",
+            "l",
+            "b"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [
+          "C"
+        ],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "(180*atan(a.k) - 180*atan(l.k))/pi - (-180*atan(b.k) + 180*atan(l.k))/pi",
+          "-C.x*l.k + C.y - l.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "LineTangentToCircle": {
+      "type": "basic",
+      "paras": [
+        "l",
+        "O"
+      ],
+      "ee_check": [
+        "Line",
+        "Circle"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-O.r + ((-O.u*l.k + O.v - l.b)**2)**0.5/sqrt(l.k**2 + 1)"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "LineSeparateFromCircle": {
+      "type": "basic",
+      "paras": [
+        "l",
+        "O"
+      ],
+      "ee_check": [
+        "Line",
+        "Circle"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [
+          "-O.r + ((-O.u*l.k + O.v - l.b)**2)**0.5/sqrt(l.k**2 + 1)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "LineIntersectCircle": {
+      "type": "basic",
+      "paras": [
+        "l",
+        "O"
+      ],
+      "ee_check": [
+        "Line",
+        "Circle"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-O.r + ((-O.u*l.k + O.v - l.b)**2)**0.5/sqrt(l.k**2 + 1)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SegmentGreaterSegment": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "SegmentGreaterSegment",
+          [
+            "B",
+            "A",
+            "C",
+            "D"
+          ]
+        ],
+        [
+          "SegmentGreaterSegment",
+          [
+            "A",
+            "B",
+            "D",
+            "C"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [
+          "(A.x - B.x)**2 + (A.y - B.y)**2 - (C.x - D.x)**2 - (C.y - D.y)**2"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SegmentEqualCircleRadius": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "SegmentEqualCircleRadius",
+          [
+            "B",
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "Equation",
+          "-AB.dpp + O.rad"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "O.r - sqrt((A.x - B.x)**2 + (A.y - B.y)**2)"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SegmentGreaterCircleRadius": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "SegmentGreaterCircleRadius",
+          [
+            "B",
+            "A",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "O.r - sqrt((A.x - B.x)**2 + (A.y - B.y)**2)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SegmentSmallerCircleRadius": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "SegmentSmallerCircleRadius",
+          [
+            "B",
+            "A",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [
+          "O.r - sqrt((A.x - B.x)**2 + (A.y - B.y)**2)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "AngleGreaterAngle": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "AngleGreaterAngle",
+          [
+            "d",
+            "c",
+            "b",
+            "a"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [
+          "(180*atan(a.k) - 180*atan(b.k))/pi - (180*atan(c.k) - 180*atan(d.k))/pi"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "SameCircle": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "SameCircle",
+          [
+            "Q",
+            "O"
+          ]
+        ],
+        [
+          "Equation",
+          "O.rad - Q.rad"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "O.r - Q.r",
+          "O.v - Q.v",
+          "O.u - Q.u"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CirclesCongruent": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "CirclesCongruent",
+          [
+            "Q",
+            "O"
+          ]
+        ],
+        [
+          "Equation",
+          "O.rad - Q.rad"
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "O.r - Q.r"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CirclesExternallySeparate": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "CirclesExternallySeparate",
+          [
+            "Q",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [
+          "-O.r - Q.r + sqrt((O.u - Q.u)**2 + (O.v - Q.v)**2)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CirclesExternallyTangent": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "CirclesExternallyTangent",
+          [
+            "Q",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-O.r - Q.r + sqrt((O.u - Q.u)**2 + (O.v - Q.v)**2)"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CirclesIntersect": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "CirclesIntersect",
+          [
+            "Q",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-O.r - Q.r + sqrt((O.u - Q.u)**2 + (O.v - Q.v)**2)",
+          "-sqrt((O.u - Q.u)**2 + (O.v - Q.v)**2) + ((O.r - Q.r)**2)**0.5"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CirclesInternallyTangent": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "CirclesInternallyTangent",
+          [
+            "Q",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "sqrt((O.u - Q.u)**2 + (O.v - Q.v)**2) - ((O.r - Q.r)**2)**0.5"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CircleContainedInCircle": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "extend": [
+        [
+          "CircleContainedInCircle",
+          [
+            "Q",
+            "O"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "sqrt((O.u - Q.u)**2 + (O.v - Q.v)**2) - ((O.r - Q.r)**2)**0.5"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CircleIsCircumscribedCircleOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "CircleIsCircumscribedCircleOfClockwiseTriangle",
+          [
+            "O",
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "CircleIsCircumscribedCircleOfClockwiseTriangle",
+          [
+            "O",
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [
+          "P",
+          "D"
+        ],
+        "Line": [
+          "n",
+          "m"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "O.r - sqrt((-A.x + P.x)**2 + (-A.y + P.y)**2)",
+          "-O.v + P.y",
+          "-O.u + P.x",
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "E.k*m.k + 1",
+          "-D.x*m.k + D.y - m.b",
+          "sqrt((-B.x + D.x)**2 + (-B.y + D.y)**2) - sqrt((-C.x + D.x)**2 + (-C.y + D.y)**2)",
+          "-C.b - C.k*D.x + D.y",
+          "-C.b - C.k*C.x + C.y",
+          "-B.x*C.k + B.y - C.b",
+          "-C.x*E.k + C.y - E.b",
+          "-B.x*E.k + B.y - E.b",
+          "G.k*n.k + 1",
+          "-F.x*n.k + F.y - n.b",
+          "sqrt((-A.x + F.x)**2 + (-A.y + F.y)**2) - sqrt((-B.x + F.x)**2 + (-B.y + F.y)**2)",
+          "-C.b - C.k*F.x + F.y",
+          "-B.x*C.k + B.y - C.b",
+          "-A.x*C.k + A.y - C.b",
+          "-B.x*G.k + B.y - G.b",
+          "-A.x*G.k + A.y - G.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CircleIsInscribedCircleOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "CircleIsInscribedCircleOfClockwiseTriangle",
+          [
+            "O",
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "CircleIsInscribedCircleOfClockwiseTriangle",
+          [
+            "O",
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [
+          "P",
+          "Q"
+        ],
+        "Line": [
+          "l",
+          "n",
+          "m"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "O.r - sqrt((P.x - Q.x)**2 + (P.y - Q.y)**2)",
+          "-O.v + P.y",
+          "-O.u + P.x",
+          "-Q.x*a.k + Q.y - a.b",
+          "-Q.x*l.k + Q.y - l.b",
+          "-P.x*l.k + P.y - l.b",
+          "a.k*l.k + 1",
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "-C.x*m.k + C.y - m.b",
+          "-(-180*atan(a.k) + 180*atan(m.k))/pi + (180*atan(b.k) - 180*atan(m.k))/pi",
+          "-A.x*n.k + A.y - n.b",
+          "-(-180*atan(b.k) + 180*atan(n.k))/pi + (180*atan(c.k) - 180*atan(n.k))/pi"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "CircleIsFirstExscribedCircleOfClockwiseTriangle": {
+      "type": "indirect",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [
+          "P",
+          "Q"
+        ],
+        "Line": [
+          "l",
+          "n",
+          "m"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "O.r - sqrt((P.x - Q.x)**2 + (P.y - Q.y)**2)",
+          "-O.v + P.y",
+          "-O.u + P.x",
+          "-Q.x*a.k + Q.y - a.b",
+          "-Q.x*l.k + Q.y - l.b",
+          "-P.x*l.k + P.y - l.b",
+          "a.k*l.k + 1",
+          "-P.x*m.k + P.y - m.b",
+          "-P.x*n.k + P.y - n.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b",
+          "-B.x*m.k + B.y - m.b",
+          "-(-180*atan(a.k) + 180*atan(m.k))/pi + (180*atan(c.k) - 180*atan(m.k))/pi",
+          "-A.x*n.k + A.y - n.b",
+          "-(-180*atan(b.k) + 180*atan(n.k))/pi + (180*atan(c.k) - 180*atan(n.k))/pi"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "ArcEqualArc": {
+      "type": "indirect",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "Q",
+        "C",
+        "D"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Circle",
+        "Point",
+        "Point"
+      ],
+      "extend": [
+        [
+          "ArcEqualArc",
+          [
+            "O",
+            "B",
+            "A",
+            "Q",
+            "D",
+            "C"
+          ]
+        ],
+        [
+          "ArcEqualArc",
+          [
+            "Q",
+            "C",
+            "D",
+            "O",
+            "A",
+            "B"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [
+          "X",
+          "Y"
+        ],
+        "Line": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "O.r*(180*atan(a) - 180*atan(b))/pi - Q.r*(180*atan(c) - 180*atan(d))/pi",
+          "-Y.x*d.k + Y.y - d.b",
+          "-D.x*d.k + D.y - d.b",
+          "-Y.x*c.k + Y.y - c.b",
+          "-C.x*c.k + C.y - c.b",
+          "-Q.v + Y.y",
+          "-Q.u + Y.x",
+          "-X.x*b.k + X.y - b.b",
+          "-B.x*b.k + B.y - b.b",
+          "-X.x*a.k + X.y - a.b",
+          "-A.x*a.k + A.y - a.b",
+          "-O.v + X.y",
+          "-O.u + X.x"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "ArcGreaterArc": {
+      "type": "indirect",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "Q",
+        "C",
+        "D"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Circle",
+        "Point",
+        "Point"
+      ],
+      "extend": [],
+      "implicit_entity": {
+        "Point": [
+          "X",
+          "Y"
+        ],
+        "Line": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "-Y.x*d.k + Y.y - d.b",
+          "-D.x*d.k + D.y - d.b",
+          "-Y.x*c.k + Y.y - c.b",
+          "-C.x*c.k + C.y - c.b",
+          "-Q.v + Y.y",
+          "-Q.u + Y.x",
+          "-X.x*b.k + X.y - b.b",
+          "-B.x*b.k + B.y - b.b",
+          "-X.x*a.k + X.y - a.b",
+          "-A.x*a.k + A.y - a.b",
+          "-O.v + X.y",
+          "-O.u + X.x"
+        ],
+        "G": [
+          "O.r*(180*atan(a) - 180*atan(b))/pi - Q.r*(180*atan(c) - 180*atan(d))/pi"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "TriangleSimilarTriangle": {
+      "type": "composite",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "D",
+        "E",
+        "F",
+        "d",
+        "e",
+        "f"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "TriangleSimilarTriangle",
+          [
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a",
+            "E",
+            "F",
+            "D",
+            "e",
+            "f",
+            "d"
+          ]
+        ],
+        [
+          "TriangleSimilarTriangle",
+          [
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b",
+            "F",
+            "D",
+            "E",
+            "f",
+            "d",
+            "e"
+          ]
+        ],
+        [
+          "TriangleSimilarTriangle",
+          [
+            "D",
+            "E",
+            "F",
+            "d",
+            "e",
+            "f",
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "c",
+            "d",
+            "f"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "f",
+            "e"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "D",
+            "E",
+            "F",
+            "d",
+            "e",
+            "f"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "(180*atan(a.k) - 180*atan(c.k))/pi - (180*atan(d.k) - 180*atan(f.k))/pi",
+          "(-180*atan(b.k) + 180*atan(c.k))/pi - (-180*atan(e.k) + 180*atan(f.k))/pi",
+          "-F.x*e.k + F.y - e.b",
+          "-F.x*d.k + F.y - d.b",
+          "-E.x*f.k + E.y - f.b",
+          "-E.x*d.k + E.y - d.b",
+          "-D.x*f.k + D.y - f.b",
+          "-D.x*e.k + D.y - e.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-D.x + E.x)*(-D.y + F.y) - (-D.x + F.x)*(-D.y + E.y)",
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "TriangleCongruentTriangle": {
+      "type": "composite",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "D",
+        "E",
+        "F",
+        "d",
+        "e",
+        "f"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "TriangleCongruentTriangle",
+          [
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a",
+            "E",
+            "F",
+            "D",
+            "e",
+            "f",
+            "d"
+          ]
+        ],
+        [
+          "TriangleCongruentTriangle",
+          [
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b",
+            "F",
+            "D",
+            "E",
+            "f",
+            "d",
+            "e"
+          ]
+        ],
+        [
+          "TriangleCongruentTriangle",
+          [
+            "D",
+            "E",
+            "F",
+            "d",
+            "e",
+            "f",
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "TriangleSimilarTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c",
+            "D",
+            "E",
+            "F",
+            "d",
+            "e",
+            "f"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "sqrt((A.x - B.x)**2 + (A.y - B.y)**2) - sqrt((D.x - E).x)**2 + (D.y - E).y)**2)",
+          "(180*atan(a.k) - 180*atan(c.k))/pi - (180*atan(d.k) - 180*atan(f.k))/pi",
+          "(-180*atan(b.k) + 180*atan(c.k))/pi - (-180*atan(e.k) + 180*atan(f.k))/pi",
+          "-F.x*e.k + F.y - e.b",
+          "-F.x*d.k + F.y - d.b",
+          "-E.x*f.k + E.y - f.b",
+          "-E.x*d.k + E.y - d.b",
+          "-D.x*f.k + D.y - f.b",
+          "-D.x*e.k + D.y - e.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-D.x + E.x)*(-D.y + F.y) - (-D.x + F.x)*(-D.y + E.y)",
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "TriangleMirrorSimilarTriangle": {
+      "type": "composite",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "D",
+        "E",
+        "F",
+        "d",
+        "e",
+        "f"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "TriangleMirrorSimilarTriangle",
+          [
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a",
+            "E",
+            "F",
+            "D",
+            "e",
+            "f",
+            "d"
+          ]
+        ],
+        [
+          "TriangleMirrorSimilarTriangle",
+          [
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b",
+            "F",
+            "D",
+            "E",
+            "f",
+            "d",
+            "e"
+          ]
+        ],
+        [
+          "TriangleMirrorSimilarTriangle",
+          [
+            "D",
+            "E",
+            "F",
+            "d",
+            "e",
+            "f",
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "c",
+            "f",
+            "d"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "e",
+            "f"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "D",
+            "F",
+            "E",
+            "d",
+            "f",
+            "e"
+          ]
+        ],
+        [
+          "ClockwiseTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "(180*atan(a.k) - 180*atan(c.k))/pi - (-180*atan(d.k) + 180*atan(f.k))/pi",
+          "(-180*atan(b.k) + 180*atan(c.k))/pi - (180*atan(e.k) - 180*atan(f.k))/pi",
+          "-E.x*f.k + E.y - f.b",
+          "-E.x*d.k + E.y - d.b",
+          "-F.x*e.k + F.y - e.b",
+          "-F.x*d.k + F.y - d.b",
+          "-D.x*e.k + D.y - e.b",
+          "-D.x*f.k + D.y - f.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-(-D.x + E.x)*(-D.y + F.y) + (-D.x + F.x)*(-D.y + E.y)",
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    },
+    "TriangleMirrorCongruentTriangle": {
+      "type": "composite",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "D",
+        "E",
+        "F",
+        "d",
+        "e",
+        "f"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "extend": [
+        [
+          "TriangleMirrorCongruentTriangle",
+          [
+            "B",
+            "C",
+            "A",
+            "b",
+            "c",
+            "a",
+            "E",
+            "F",
+            "D",
+            "e",
+            "f",
+            "d"
+          ]
+        ],
+        [
+          "TriangleMirrorCongruentTriangle",
+          [
+            "C",
+            "A",
+            "B",
+            "c",
+            "a",
+            "b",
+            "F",
+            "D",
+            "E",
+            "f",
+            "d",
+            "e"
+          ]
+        ],
+        [
+          "TriangleMirrorCongruentTriangle",
+          [
+            "D",
+            "E",
+            "F",
+            "d",
+            "e",
+            "f",
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "D",
+            "E"
+          ]
+        ],
+        [
+          "TriangleMirrorSimilarTriangle",
+          [
+            "A",
+            "B",
+            "C",
+            "a",
+            "b",
+            "c",
+            "D",
+            "E",
+            "F",
+            "d",
+            "e",
+            "f"
+          ]
+        ]
+      ],
+      "implicit_entity": {
+        "Point": [],
+        "Line": [],
+        "Circle": []
+      },
+      "constraints": {
+        "Eq": [
+          "sqrt((A.x - B.x)**2 + (A.y - B.y)**2) - sqrt((D.x - E.x)**2 + (D.y - E.y)**2)",
+          "(180*atan(a.k) - 180*atan(c.k))/pi - (-180*atan(d.k) + 180*atan(f.k))/pi",
+          "(-180*atan(b.k) + 180*atan(c.k))/pi - (180*atan(e.k) - 180*atan(f.k))/pi",
+          "-E.x*f.k + E.y - f.b",
+          "-E.x*d.k + E.y - d.b",
+          "-F.x*e.k + F.y - e.b",
+          "-F.x*d.k + F.y - d.b",
+          "-D.x*e.k + D.y - e.b",
+          "-D.x*f.k + D.y - f.b",
+          "-C.x*b.k + C.y - b.b",
+          "-C.x*a.k + C.y - a.b",
+          "-B.x*c.k + B.y - c.b",
+          "-B.x*a.k + B.y - a.b",
+          "-A.x*c.k + A.y - c.b",
+          "-A.x*b.k + A.y - b.b"
+        ],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-(-D.x + E.x)*(-D.y + F.y) + (-D.x + F.x)*(-D.y + E.y)",
+          "(-A.x + B.x)*(-A.y + C.y) - (-A.x + C.x)*(-A.y + B.y)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      }
+    }
+  },
+  "Theorems": {
+    "D6": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "LinesParallel",
+          [
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D9": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "LinesPerpendicular",
+          [
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "LinesPerpendicular",
+          [
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D10": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "LinesPerpendicular",
+          [
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "a",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D22": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "b",
+            "c",
+            "d"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "d",
+            "e",
+            "f"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "b",
+            "e",
+            "f"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D25": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "C",
+            "D"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "D",
+            "E",
+            "F"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "E",
+            "F"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D39": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "AngleEqualAngle",
+          [
+            "b",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D40": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "b",
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D41": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "P",
+        "Q",
+        "a",
+        "b",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "Q",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "b",
+            "a",
+            "m",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D42": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "P",
+        "Q",
+        "a",
+        "b",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "b",
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "PointOnCircle",
+          [
+            "Q",
+            "O"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D43": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "C",
+        "P",
+        "Q",
+        "R",
+        "a",
+        "b",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "Q",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "R",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "m"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "b",
+            "l",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "P",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D44": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "E",
+        "F",
+        "a",
+        "b",
+        "c",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "F",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "E",
+            "c"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "F",
+            "A",
+            "F",
+            "C"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "E",
+            "A",
+            "E",
+            "B"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "E",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "F",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "l",
+            "a"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D45": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "E",
+        "F",
+        "a",
+        "b",
+        "c",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "F",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "E",
+            "c"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "E",
+            "A",
+            "E",
+            "B"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "E",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "F",
+            "l"
+          ]
+        ],
+        [
+          "LinesParallel",
+          [
+            "l",
+            "a"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "F",
+            "A",
+            "F",
+            "C"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D46": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "A",
+            "C",
+            "B"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "b",
+            "c",
+            "c",
+            "a"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D47": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "-C.x*a.k + C.y - a.b"
+        ]
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "b",
+            "c",
+            "c",
+            "a)"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "A",
+            "C",
+            "B"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D48": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "l"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "LineTangentToCircle",
+          [
+            "l",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "l",
+            "c",
+            "b",
+            "a"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D49": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "l"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "l",
+            "c",
+            "b",
+            "a"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LineTangentToCircle",
+          [
+            "l",
+            "O"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D50": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "P",
+        "A",
+        "B",
+        "C",
+        "M",
+        "a",
+        "b",
+        "c",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "a"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "M",
+            "C",
+            "M"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "l",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D51": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "P",
+        "A",
+        "B",
+        "C",
+        "M",
+        "a",
+        "b",
+        "c",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "a"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "l",
+            "m"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "M",
+            "C",
+            "M"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D52": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "M",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "LinesPerpendicular",
+          [
+            "c",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "b"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "M",
+            "C",
+            "M"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "M",
+            "B",
+            "M"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D53": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "P",
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "b"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "a",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D54": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "C",
+        "D",
+        "i",
+        "j",
+        "k",
+        "l"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "j"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "D",
+            "O"
+          ]
+        ],
+        [
+          "LinesParallel",
+          [
+            "i",
+            "j"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "k",
+            "j",
+            "j",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D55": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "M",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "m"
+          ]
+        ],
+        [
+          "LinesPerpendicular",
+          [
+            "l",
+            "m"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "M",
+            "A",
+            "M"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "C",
+            "A",
+            "C"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D56": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "P",
+        "Q",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "m"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "P",
+            "A",
+            "P"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "Q",
+            "A",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "l",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D57": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "B",
+        "P",
+        "Q",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "Q",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "m"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "P",
+            "A",
+            "P"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "B",
+            "Q",
+            "A",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "l",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D63": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "M",
+        "i",
+        "j",
+        "k",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "j"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "M",
+            "B",
+            "M"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "M",
+            "D",
+            "M)"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "k",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D64": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "M",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "M",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "n"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "n"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "M",
+            "B",
+            "M"
+          ]
+        ],
+        [
+          "LinesParallel",
+          [
+            "k",
+            "l"
+          ]
+        ],
+        [
+          "LinesParallel",
+          [
+            "m",
+            "n"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "PointOnLine",
+          [
+            "M",
+            "j"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "M",
+            "D",
+            "M"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D66": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "a",
+        "b"
+      ],
+      "ee_check": [
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "LinesParallel",
+          [
+            "a",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SameLine",
+          [
+            "a",
+            "b"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "顺时针三角形ABC内角和": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "ac.ma + ba.ma + cb.ma - 180"
+      ]
+    },
+    "A17": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "a.k - b.k"
+        ]
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "ab.ma + ba.ma - 180"
+      ]
+    },
+    "D58+D59三角形ABC相似于三角形PQR，ABC顺时针,PQR顺时针": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "P",
+        "Q",
+        "R",
+        "p",
+        "q",
+        "r"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)",
+          "-(P.x - Q.x)*(-Q.y + R.y) + (P.y - Q.y)*(-Q.x + R.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "r"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "r"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "c",
+            "p",
+            "r"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "r",
+            "q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AB.dpp/PQ.dpp - BC.dpp/QR.dpp",
+        "AB.dpp/PQ.dpp - AC.dpp/PR.dpp",
+        "AC.dpp/PR.dpp - BC.dpp/QR.dpp"
+      ]
+    },
+    "D58+D59三角形ABC镜像相似于三角形PQR,ABC顺时针,PRQ顺时针": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "P",
+        "Q",
+        "R",
+        "p",
+        "q",
+        "r"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [
+          "-(P.x - Q.x)*(-Q.y + R.y) + (P.y - Q.y)*(-Q.x + R.x)"
+        ],
+        "Geq": [],
+        "L": [
+          "-(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "r"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "r"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "c",
+            "r",
+            "p"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "q",
+            "r"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AB.dpp/PQ.dpp - BC.dpp/QR.dpp",
+        "AB.dpp/PQ.dpp - AC.dpp/PR.dpp",
+        "AC.dpp/PR.dpp - BC.dpp/QR.dpp"
+      ]
+    },
+    "D61+D62三角形ABC全等于三角形PQR，ABC顺时针,PQR顺时针": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "P",
+        "Q",
+        "R",
+        "p",
+        "q",
+        "r"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "-(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)",
+          "-(P.x - Q.x)*(-Q.y + R.y) + (P.y - Q.y)*(-Q.x + R.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "r"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "r"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "c",
+            "p",
+            "r"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "r",
+            "q"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "P",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "C",
+            "P",
+            "R"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "B",
+            "R",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D61+D62三角形ABC镜像全等于三角形PQR,ABC顺时针,PRQ顺时针": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "a",
+        "b",
+        "c",
+        "P",
+        "Q",
+        "R",
+        "p",
+        "q",
+        "r"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [
+          "-(P.x - Q.x)*(-Q.y + R.y) + (P.y - Q.y)*(-Q.x + R.x)"
+        ],
+        "Geq": [],
+        "L": [
+          "-(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "B",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "a"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "b"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "c"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "p"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "R",
+            "q"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "r"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "Q",
+            "r"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "c",
+            "r",
+            "p"
+          ]
+        ],
+        [
+          "AngleEqualAngle",
+          [
+            "c",
+            "b",
+            "q",
+            "r"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "P",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "C",
+            "P",
+            "R"
+          ]
+        ],
+        [
+          "SegmentEqualSegment",
+          [
+            "C",
+            "B",
+            "R",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D65": {
+      "type": "basic",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "D",
+        "i",
+        "j",
+        "k",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "i"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "j"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "k"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "D",
+            "l"
+          ]
+        ],
+        [
+          "LinesParallel",
+          [
+            "k",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "-PB.dpp/BD.dpp + PA.dpp/AC.dpp"
+      ]
+    },
+    "D72": {
+      "type": "basic",
+      "paras": [
+        "i",
+        "j"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "i.k - j.k"
+        ]
+      },
+      "geometric_premise": [
+        [
+          "AngleEqualAngle",
+          [
+            "i",
+            "j",
+            "j",
+            "i"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "i",
+            "j"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D71": {
+      "type": "basic",
+      "paras": [
+        "i",
+        "j"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "i.k*j.k + 1"
+        ]
+      },
+      "geometric_premise": [
+        [
+          "AngleEqualAngle",
+          [
+            "i",
+            "j",
+            "j",
+            "i"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "i",
+            "j"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D73": {
+      "type": "basic",
+      "paras": [
+        "i",
+        "j"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "i.b - j.b"
+        ]
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "ij.ma"
+      ],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "i",
+            "j"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "D74": {
+      "type": "basic",
+      "paras": [
+        "i",
+        "j"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "ij.ma - 90"
+      ],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "a",
+            "b"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "DcheckSamePoint_1": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "l.k - m.k"
+        ]
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SamePoint",
+          [
+            "A",
+            "B"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "DcheckSamePoint_2": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "l.b - m.b"
+        ]
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SamePoint",
+          [
+            "A",
+            "B"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "DcheckSameLine_1": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "A.x - B.x"
+        ]
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SameLine",
+          [
+            "l",
+            "k"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "DcheckSameLine_2": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": [
+          "A.y - B.y"
+        ]
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SameLine",
+          [
+            "l",
+            "k"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "DcheckSameCircle": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q",
+        "A",
+        "B",
+        "C"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle",
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [
+          "(A.x - B.x)**2 + (A.y - B.y)**2",
+          "(A.x - C.x)**2 + (A.y - C.y)**2",
+          "(B.x - C.x)**2 + (B.y - C.y)**2"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "O"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "Q"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "B",
+            "Q"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "C",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "SameCircle",
+          [
+            "O",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "DcheckLineTangentToCircle": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "l",
+        "m",
+        "P",
+        "A"
+      ],
+      "ee_check": [
+        "Circle",
+        "Line",
+        "Line",
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "LineTangentToCircle",
+          [
+            "l",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "P",
+            "O"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "l",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": [
+        "-O.rad + Pl.dpl"
+      ]
+    },
+    "DcheckCircle": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "A",
+        "P"
+      ],
+      "ee_check": [
+        "Circle",
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "P",
+            "O"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AP.dpp - O.rad"
+      ]
+    },
+    "DcheckdppAnddpl": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "LinesPerpendicular",
+          [
+            "l",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "-AB.dpp + Am.dpl"
+      ]
+    },
+    "DcheckdppAnddpc": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "P",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Circle"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointIsCircleCenter",
+          [
+            "P",
+            "O"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AO.dpc - AP.dpp"
+      ]
+    },
+    "DcheckCirclesCongruent": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "O.rad - Q.rad"
+      ],
+      "geometric_conclusion": [
+        [
+          "CirclesCongruent",
+          [
+            "O",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "DcheckCirclesExternallyTangent": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q",
+        "A",
+        "B"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle",
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "CirclesExternallyTangent",
+          [
+            "O",
+            "Q"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "B",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AB.dpp - O.rad - Q.rad"
+      ]
+    },
+    "DcheckCirclesInternallyTangent": {
+      "type": "basic",
+      "paras": [
+        "O",
+        "Q",
+        "A",
+        "B"
+      ],
+      "ee_check": [
+        "Circle",
+        "Circle",
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "CirclesInternallyTangent",
+          [
+            "O",
+            "Q"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "A",
+            "O"
+          ]
+        ],
+        [
+          "PointIsCircleCenter",
+          [
+            "B",
+            "Q"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AB.dpp - ((O.rad - Q.rad)**2)**0.5"
+      ]
+    },
+    "A1": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B"
+      ],
+      "ee_check": [
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "AB.dpp"
+      ],
+      "geometric_conclusion": [
+        [
+          "SamePoint",
+          [
+            "A",
+            "B"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A2": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "Al.dpl"
+      ],
+      "geometric_conclusion": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A3": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "AO.dpc"
+      ],
+      "geometric_conclusion": [
+        [
+          "PointIsCircleCenter",
+          [
+            "A",
+            "O"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A4": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Circle"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "AO.dpc - O.rad"
+      ],
+      "geometric_conclusion": [
+        [
+          "PointOnCircle",
+          [
+            "A",
+            "O"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A5": {
+      "type": "basic",
+      "paras": [
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "lm.ma"
+      ],
+      "geometric_conclusion": [
+        [
+          "LinesParallel",
+          [
+            "l",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A6": {
+      "type": "basic",
+      "paras": [
+        "l",
+        "m"
+      ],
+      "ee_check": [
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "lm.ma - 90"
+      ],
+      "geometric_conclusion": [
+        [
+          "LinesPerpendicular",
+          [
+            "l",
+            "m"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A7": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "AB.dpp - CD.dpp"
+      ],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualSegment",
+          [
+            "A",
+            "B",
+            "C",
+            "D"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A8": {
+      "type": "basic",
+      "paras": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "ee_check": [
+        "Line",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "ab.ma - cd.ma"
+      ],
+      "geometric_conclusion": [
+        [
+          "AngleEqualAngle",
+          [
+            "a",
+            "b",
+            "c",
+            "d"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A9": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "O"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Circle"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [
+        "AB.dpp - O.rad"
+      ],
+      "geometric_conclusion": [
+        [
+          "SegmentEqualCircleRadius",
+          [
+            "A",
+            "B",
+            "O"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A10": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [
+        "-AB.dpp + AC.dpp + BC.dpp"
+      ],
+      "geometric_conclusion": [
+        [
+          "PointOnLine",
+          [
+            "C",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A11": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [
+        "AB.dpp - AC.dpp + BC.dpp"
+      ],
+      "geometric_conclusion": [
+        [
+          "PointOnLine",
+          [
+            "C",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A12": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [
+        "AB.dpp + AC.dpp - CB.dpp"
+      ],
+      "geometric_conclusion": [
+        [
+          "PointOnLine",
+          [
+            "C",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_conclusion": []
+    },
+    "A13": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(A.x - C.x)*(B.x - C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "-AB.dpp + AC.dpp + BC.dpp"
+      ]
+    },
+    "A14": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(A.x - B.x)*(-B.x + C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AB.dpp - AC.dpp + BC.dpp"
+      ]
+    },
+    "A15": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B",
+        "C",
+        "l"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [
+          "(-A.x + B.x)*(-A.x + C.x)"
+        ],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "l"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AB.dpp + AC.dpp - CB.dpp"
+      ]
+    },
+    "A16": {
+      "type": "basic",
+      "paras": [
+        "P",
+        "A",
+        "B",
+        "C",
+        "l",
+        "m",
+        "n"
+      ],
+      "ee_check": [
+        "Point",
+        "Point",
+        "Point",
+        "Point",
+        "Line",
+        "Line",
+        "Line"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [
+          "-(B.x - P.x)*(C.y - P.y) + (B.y - P.y)*(C.x - P.x)",
+          "-(-A.x + B.x)*(-A.y + P.y) + (-A.x + P.x)*(-A.y + B.y)"
+        ],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [
+        [
+          "PointOnLine",
+          [
+            "P",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "A",
+            "l"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "B",
+            "m"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "P",
+            "n"
+          ]
+        ],
+        [
+          "PointOnLine",
+          [
+            "C",
+            "n"
+          ]
+        ]
+      ],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "lm.ma - ln.ma + mn.ma",
+        "lm.ma + nl.ma - nm.ma",
+        "-ml.ma + mn.ma + nl.ma"
+      ]
+    },
+    "A18": {
+      "type": "basic",
+      "paras": [
+        "A",
+        "B"
+      ],
+      "ee_check": [
+        "Point",
+        "Point"
+      ],
+      "ac_check": {
+        "Eq": [],
+        "G": [],
+        "Geq": [],
+        "L": [],
+        "Leq": [],
+        "Ueq": []
+      },
+      "geometric_premise": [],
+      "algebraic_premise": [],
+      "geometric_conclusion": [],
+      "algebraic_conclusion": [
+        "AB.dpp - BA.dpp"
+      ]
+    }
+  }
+}
