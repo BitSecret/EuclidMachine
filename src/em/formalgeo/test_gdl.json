@@ -1,0 +1,296 @@
+{
+  "Entities": {
+    "Point(A)": {
+      "temporary": []
+    },
+    "Line(l)": {
+      "temporary": [
+        "Line(AB)",
+        "Line(A;l)"
+      ]
+    },
+    "Circle(O)": {
+      "temporary": [
+        "Circle(ABC)",
+        "Circle(O;AB)"
+      ]
+    }
+  },
+  "Measures": {
+    "XCoordinateOfPoint(A)": {
+      "type": "parameter",
+      "ee_check": [
+        "Point(A)"
+      ],
+      "sym": "x",
+      "multi": []
+    },
+    "YCoordinateOfPoint(A)": {
+      "type": "parameter",
+      "ee_check": [
+        "Point(A)"
+      ],
+      "sym": "y",
+      "multi": []
+    },
+    "KOfLine(l)": {
+      "type": "parameter",
+      "ee_check": [
+        "Line(l)"
+      ],
+      "sym": "k",
+      "multi": []
+    },
+    "BOfLine(l)": {
+      "type": "parameter",
+      "ee_check": [
+        "Line(l)"
+      ],
+      "sym": "b",
+      "multi": []
+    },
+    "CenterXOfCircle(A)": {
+      "type": "parameter",
+      "ee_check": [
+        "Point(A)"
+      ],
+      "sym": "cx",
+      "multi": []
+    },
+    "CenterYOfCircle(O)": {
+      "type": "parameter",
+      "ee_check": [
+        "Circle(O)"
+      ],
+      "sym": "cy",
+      "multi": []
+    },
+    "RadiusOfCircle(O)": {
+      "type": "parameter",
+      "ee_check": [
+        "Circle(O)"
+      ],
+      "sym": "r",
+      "multi": []
+    },
+    "DistanceBetweenPointAndPoint(A,B)": {
+      "type": "attribution",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)"
+      ],
+      "sym": "dpp",
+      "multi": [
+        "DistanceBetweenPointAndPoint(B,A)"
+      ]
+    },
+    "DistanceBetweenPointAndLine(A,l)": {
+      "type": "attribution",
+      "ee_check": [
+        "Point(A)",
+        "Line(l)"
+      ],
+      "sym": "dpl",
+      "multi": []
+    },
+    "MeasureOfAngle(l,k)": {
+      "type": "attribution",
+      "ee_check": [
+        "Line(l)",
+        "Line(k)"
+      ],
+      "sym": "ma",
+      "multi": []
+    }
+  },
+  "Relations": {
+    "IncenterOfTriangle(O,A,B,C)": {
+      "type": "indirect",
+      "ee_check": [
+        "Point(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)"
+      ],
+      "extend": [],
+      "implicit_entity": [
+        "Line(c):PointOnLine(A,c)&PointOnLine(B,c)",
+        "Line(a):PointOnLine(B,a)&PointOnLine(C,a)",
+        "Line(b):PointOnLine(C,b)&PointOnLine(A,b)",
+        "Line(x):EqualAngle(b,x,x,c)",
+        "Line(y):EqualAngle(c,y,y,a)"
+      ],
+      "constraints": "PointLeftSegment(C,A,B)&PointOnLine(O,x)&PointOnLine(O,y)"
+    },
+    "MidpointOfArc(M,O,A,B)": {
+      "type": "composite",
+      "ee_check": [
+        "Point(M)",
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)"
+      ],
+      "extend": [],
+      "implicit_entity": [],
+      "constraints": "PointOnCircle(M,O)&EqualDistance(M,A,M,B)&PointLeftSegment(M,B,A)"
+    },
+    "SamePoint(A,B)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)"
+      ],
+      "extend": [
+        "SamePoint(B,A)"
+      ],
+      "implicit_entity": [],
+      "constraints": "Eq(Sub(A.x,B.x))&Eq(Sub(A.y,B.y))"
+    },
+    "PointOnLine(A,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Line(l)"
+      ],
+      "extend": [],
+      "implicit_entity": [],
+      "constraints": "Eq(Sub(A.y,Add(Mul(l.k,A.x),l.b)))"
+    },
+    "PointOnCircle(A,O)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Circle(O)"
+      ],
+      "extend": [],
+      "implicit_entity": [],
+      "constraints": "Eq(PP(A.x,A.y,O.a,O.b,O.r))"
+    },
+    "PointLeftSegment(A,B,C)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)"
+      ],
+      "extend": [],
+      "implicit_entity": [],
+      "constraints": "G(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))"
+    },
+    "EqualAngle(a,b,l,k)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(l)",
+        "Line(k)"
+      ],
+      "extend": [
+        "EqualAngle(l,k,a,b)",
+        "Eq(Sub(ab.ma,lk.ma))"
+      ],
+      "implicit_entity": [],
+      "constraints": "Eq(Sub(MA(a.k,b.k),MA(l.k,k.k)))"
+    },
+    "EqualDistance(A,B,C,D)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(D)"
+      ],
+      "extend": [
+        "EqualDistance(B,A,C,D)",
+        "EqualDistance(C,D,A,B)",
+        "Eq(Sub(AB.dpp,CD.dpp))"
+      ],
+      "implicit_entity": [],
+      "constraints": "Eq(Sub(DPP(A.x,A.y,B.x,B.y),DPP(C.x,C.y,D.x,D.y)))"
+    },
+    "Parallel(l,k)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(l)",
+        "Line(k)"
+      ],
+      "extend": [
+        "Parallel(k,l)"
+      ],
+      "implicit_entity": [],
+      "constraints": "Eq(Sub(l.k,k.k))"
+    }
+  },
+  "Theorems": {
+    "parallel_property_angle_equal(a,l,k)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(l)",
+        "Line(k)"
+      ],
+      "ac_check": "",
+      "premise": "Parallel(l,k)",
+      "conclusion": [
+        "EqualAngle(l,a,k,a)"
+      ],
+      "proving": {}
+    },
+    "adjacent_complementary_angle(l,k)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(l)",
+        "Line(k)"
+      ],
+      "ac_check": "",
+      "premise": "",
+      "conclusion": [
+        "Eq(Sub(Add(lk.ma,kl.ma),180))"
+      ],
+      "proving": {}
+    },
+    "equal_angle_judgment(l,k,a,b)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(l)",
+        "Line(k)",
+        "Line(a)",
+        "Line(b)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(lk.ma,ab.ma))",
+      "conclusion": [
+        "EqualAngle(l,k,a,b)"
+      ],
+      "proving": {}
+    },
+    "parallel_property_angle_equal_extend(a,l,k)": {
+      "type": "extend",
+      "ee_check": [
+        "Line(a)",
+        "Line(l)",
+        "Line(k)"
+      ],
+      "ac_check": "",
+      "premise": "Parallel(l,k)",
+      "conclusion": [
+        "EqualAngle(a,l,a,k)"
+      ],
+      "proving": {
+        "START": [
+          "parallel_property_angle_equal(a,l,k)"
+        ],
+        "parallel_property_angle_equal(a,l,k)": [
+          "adjacent_complementary_angle(l,a)",
+          "adjacent_complementary_angle(k,a)"
+        ],
+        "adjacent_complementary_angle(l,a)": [
+          "equal_angle_judgment(a,l,a,k)"
+        ],
+        "adjacent_complementary_angle(k,a)": [
+          "equal_angle_judgment(a,l,a,k)"
+        ]
+      }
+    }
+  }
+}

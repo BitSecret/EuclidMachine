@@ -1,16 +1,6 @@
 from sympy import sympify, symbols, sqrt, atan, pi
-import string
-import random
 import json
 
-"""Useful tools.
-1.实体命名空间定义
-2.文件输入输出操作
-3.数据格式转换
-  A、GDL解析为Problem可用的形式
-  B、Problem转化为超图
-  C、Problem的所有实体作图
-"""
 _lu = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
        'W', 'X', 'Y', 'Z')  # latin_upper 26
 _lsu = ('𝓐', '𝓑', '𝓒', '𝓓', '𝓔', '𝓕', '𝓖', '𝓗', '𝓘', '𝓙', '𝓚', '𝓛', '𝓜', '𝓝', '𝓞', '𝓟', '𝓠', '𝓡', '𝓢', '𝓣', '𝓤',
@@ -46,14 +36,15 @@ def save_json(data, filename):
 def parse_gdl(gdl):
     """Parse Geometry Definition Language into a usable format for Problem."""
     parsed_gdl = {
-        'Entities': {'Point': {'paras': ['A'], "temporary": []},  # built-in basic entities
-                     'Line': {'paras': ['l'], "temporary": ["AB", "A;l"]},
-                     'Circle': {'paras': ['O'], "temporary": ["ABC", "O;AB"]}},
+        'Entities': {},
         'sym_to_measure': {},
         'Measures': {},
         'Relations': {},
         'Theorems': {}
     }
+
+    for entity in gdl['Entities']:
+        _parse_one_entity(entity, gdl, parsed_gdl)
 
     for measure in gdl['Measures']:
         _parse_one_measure(measure, gdl, parsed_gdl)
@@ -94,6 +85,19 @@ def save_readable_parsed_gdl(parsed_gdl, filename):
             theorem['algebraic_conclusion'][i] = str(theorem['algebraic_conclusion'][i])
 
     save_json(parsed_gdl, filename)
+
+
+def _parse_one_entity(entity, gdl, parsed_gdl):
+    entity_name, entity_paras = parse_predicate(entity)
+    entity_temporary = []
+    for temporary_form in gdl['Entities'][entity]['temporary']:
+        _, paras = parse_predicate(temporary_form)
+        entity_temporary.append(paras[0])
+
+    parsed_gdl['Entities'][entity_name] = {
+        'paras': entity_paras,
+        'temporary': entity_temporary
+    }
 
 
 def _parse_one_measure(measure, gdl, parsed_gdl):
@@ -395,24 +399,3 @@ def replace_expr(expr, replace):
         expr = expr.replace(sym_temp, replace_temp[sym_temp])
 
     return expr
-
-
-def draw_figure(problem, filename):
-    pass
-
-
-def draw_hypergraph(problem, filename):
-    pass
-
-
-def get_hypergraph(problem, serialize=False):
-    pass
-
-
-def find_possible_relations(problem):
-    pass
-
-
-if __name__ == '__main__':
-    save_readable_parsed_gdl(parse_gdl(load_json('../../../data/gdl/gdl.json')),
-                             '../../../data/gdl/parsed_gdl.json')

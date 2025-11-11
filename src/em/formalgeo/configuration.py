@@ -3,6 +3,10 @@ from em.formalgeo.tools import parse_predicate, parse_algebra, replace_paras, re
 from sympy import symbols, nonlinsolve, tan, pi, nsimplify, sqrt
 import random
 
+# matplotlib.use('TkAgg')  # 解决后端兼容性问题
+# plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 使用微软雅黑
+# plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+
 
 def _get_sym_from_entities(entities):
     syms = []  # symbols of parameter
@@ -61,8 +65,8 @@ def _get_free_symbols(constraint_value):
     return list(free_symbols)
 
 
-class Problem:
-    """The <Problem> class represents the construction and reasoning process of a geometric configuration.
+class Configuration:
+    """The <Configuration> class represents the construction and reasoning process of a geometric configuration.
 
     Attributions:
         self.parsed_gdl (dict): Parsed Geometry Definition Language (GDL). You can save it to json to view the specific
@@ -182,6 +186,7 @@ class Problem:
 
         self.value_of_sym = {}  # sym -> value
         self.equations = []  # [[simplified_equation, original_equation_fact_id, dependent_equation_fact_ids]]
+        self.sym_to_equations = {}  # sym -> [equation_id]
 
     def _has(self, predicate, instance):
         return instance in self.instances_of_predicate[predicate]
@@ -198,6 +203,24 @@ class Problem:
         self.instances_of_predicate[predicate].append(instance)
 
         if predicate == 'Equation':
+            if self.operations[operation_id] != 'solve_eq':
+                sym_to_value = {}
+                dependent_equation_fact_ids = []
+                for sym in instance.free_symbols:
+                    if sym in self.value_of_sym:
+                        sym_to_value[sym] = self.value_of_sym[sym]
+                        dependent_equation_fact_ids.append(self.id[('Equation', sym - self.value_of_sym[sym])])
+                free_symbols = instance.free_symbols - set(sym_to_value)
+
+                if len(free_symbols) > 0:
+                    instance = instance.subs(sym_to_value)
+                    equation_id = len(self.equations)
+                    self.equations.append([instance, fact_id, dependent_equation_fact_ids])
+                    for sym in free_symbols:
+                        if sym not in self.sym_to_equations:
+                            self.sym_to_equations[sym] = [equation_id]
+                        else:
+                            self.sym_to_equations[sym].append(equation_id)
             return True
 
         replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
@@ -257,6 +280,7 @@ class Problem:
         i_entities, constraints = self._merge_constraints(i_entities, parsed_constraints, letters)
         solved_values = self._solve_constraints(t_entity, i_entities, d_entities, constraints)
 
+        # 非严格线性构造问题，可能面临构图回溯的操作。回溯操作时，不影响已经添加到fact的实体，只是重新计算实体的参数。
         if len(solved_values) == 0:  # No solved entity
             return False
 
@@ -357,6 +381,8 @@ class Problem:
 
                 has_target_entity = False
                 has_implicit_entity = False
+                if constraint_name.startswith('Free'):
+                    has_implicit_entity = True
                 for i in range(len(constraint_paras)):
                     predicate = self.parsed_gdl['Relations'][constraint_name]["ee_check"][i]
                     if len(constraint_paras[i]) == 1:
@@ -665,13 +691,8 @@ class Problem:
             theorem_name = theorem
             theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
 
-            # geometric predicate logic
-            gpl = list(theorem_gdl['geometric_premise'])
-            for i in range(len(theorem_gdl['paras'])):
-                gpl.append((theorem_gdl['ee_check'][i], [theorem_gdl['paras'][i]]))
-
             # run geometric predicate logic
-            results = self._run_gpl(gpl, theorem_gdl)
+            results = self._run_gpl(theorem_gdl)
 
             # ac check
             checked_results = []
@@ -730,17 +751,126 @@ class Problem:
         return True, premise_ids
 
     def _pass_algebraic_premise(self, theorem_gdl, replace):
-        constraints = []
         premise_ids = []
+
         for constraint in theorem_gdl['algebraic_premise']:
-            constraints.append(replace_expr(constraint, replace))
-        satisfied, algebraic_premise_ids = self._satisfy_algebraic_constraints(constraints)  # 定义在此函数即可
-        if not satisfied:
-            return False, None
+            constraint = replace_expr(constraint, replace)
+            syms, equations, c_premise_ids = self._get_minimum_dependent_equations(constraint)
+            solved_value = list(nonlinsolve(equations, syms))[0]
+
+            operation_id = len(self.operations)  # add the solved values of symbols
+            self.operations.append('solve_eq')
+            self.groups[operation_id] = []
+            added = False
+            for i in range(1, len(solved_value)):
+                if len(solved_value[i].free_symbols) == 0:
+                    added = self._set_value_of_sym(syms[i], solved_value[i], c_premise_ids, operation_id) or added
+            if not added:  # undo the add operation
+                self.operations.pop()
+                self.groups.pop(operation_id)
+
+            if solved_value[0] != 0:
+                return False, None
+
+            premise_ids += c_premise_ids
+
         return True, premise_ids
 
-    def _run_gpl(self, gpl, theorem_gdl):
-        results = []  # ([premise_ids], replace)
+    def _set_value_of_sym(self, sym, value, premise_ids, operation_id):
+        if sym in self.value_of_sym:
+            return False
+
+        self.value_of_sym[sym] = value
+        entity_ids = self._get_entity_ids('Equation', sym - value)
+        added = self._add('Equation', sym - value, premise_ids, entity_ids, operation_id)
+
+        for equation_id in self.sym_to_equations[sym]:
+            self.equations[equation_id][0] = self.equations[equation_id][0].subs({sym: value})
+            self.equations[equation_id][2].append(self.id[('Equation', sym - value)])
+        self.sym_to_equations.pop(sym)
+
+        return added
+
+    def _get_minimum_dependent_equations(self, target_expr):
+        syms = [symbols('t')]
+        equations = []
+        premise_ids = []
+
+        for sym in target_expr.free_symbols:
+            if sym not in self.value_of_sym:
+                syms.append(sym)
+            else:
+                premise_ids.append(self.id[('Equation', sym - self.value_of_sym[sym])])
+                target_expr = target_expr.subs({sym: self.value_of_sym[sym]})
+        equations.append(syms[0] - target_expr)
+
+        i = 1
+        while i < len(syms):
+            if syms[i] not in self.sym_to_equations:
+                i += 1
+                continue
+            for equation_id in self.sym_to_equations[syms[i]]:
+                if self.equations[equation_id][0] in equations:
+                    continue
+
+                equations.append(self.equations[equation_id][0])
+                for sym in self.equations[equation_id][0].free_symbols:
+                    if sym not in syms:
+                        syms.append(sym)
+                premise_ids.append(self.equations[equation_id][1])
+                premise_ids.extend(self.equations[equation_id][2])
+            i += 1
+
+        return syms, equations, premise_ids
+
+    def _run_gpl(self, theorem_gdl):
+        gpl = list(theorem_gdl['geometric_premise'])
+        for i in range(len(theorem_gdl['paras'])):
+            gpl.append((theorem_gdl['ee_check'][i], [theorem_gdl['paras'][i]]))
+
+        predicate, a_paras = gpl[0]
+        a_premise_ids = [[_id] for _id in self.ids_of_predicate[predicate]]
+        a_instances = [list(_instance) for _instance in self.instances_of_predicate[predicate]]
+
+        for predicate, b_paras in gpl[1:]:
+            b_premise_ids = self.ids_of_predicate[predicate]
+            b_instances = self.instances_of_predicate[predicate]
+
+            same_index = []  # (a_index, b_index)
+            add_index = []  # b_index
+            for bp in b_paras:
+                if bp in a_paras:
+                    same_index.append((a_paras.index(bp), b_paras.index(bp)))
+                else:
+                    add_index.append(b_paras.index(bp))
+
+            result_paras = a_paras + [b_paras[b_index] for b_index in add_index]
+            result_premise_ids = []
+            result_instances = []
+
+            for i in range(len(a_instances)):
+                for j in range(len(b_instances)):
+                    pass_check = True
+                    for a_index, b_index in same_index:
+                        if a_instances[i][a_index] != b_instances[j][b_index]:
+                            pass_check = False
+                            break
+                    if not pass_check:
+                        continue
+
+                    result_premise_ids.append(a_premise_ids[i] + [b_premise_ids[j]])
+                    result_instances.append(a_instances[i] + [b_instances[j][b_index] for b_index in add_index])
+
+            a_paras = result_paras
+            a_premise_ids = result_premise_ids
+            a_instances = result_instances
+
+        order_adjustment = [a_paras.index(p) for p in theorem_gdl['paras']]
+        results = []  # (premise_ids, replace)
+        for i in range(len(a_instances)):
+            replace = dict(zip(theorem_gdl['paras'], [a_instances[i][a_index] for a_index in order_adjustment]))
+            results.append((a_premise_ids[i], replace))
+
         return results
 
     def _add_geometric_conclusions(self, theorem_gdl, replace, premise_ids, operation_id):
@@ -758,3 +888,34 @@ class Problem:
             entity_ids = tuple(self._get_entity_ids('Equation', expr))
             add_new_fact = self._add('Equation', expr, premise_ids, entity_ids, operation_id) or add_new_fact
         return add_new_fact
+
+    def get_hypergraph(self, serialize=False):
+        pass
+
+    def draw_figure(self, filename):
+        """Draw figure using matplotlib."""
+        # _, ax = plt.subplots()
+        # # plt.gca().set_aspect('equal', adjustable='box')  # maintain the circle's aspect ratio
+        # ax.axis('equal')
+        # ax.axis('off')  # hide the axes
+        # ax.set_xlim(*self.get_point_range(ratio=1.5)[x])
+        # ax.set_ylim(*self.get_point_range(ratio=1.5)[y])
+        #
+        # for line in self.lines.values():
+        #     ax.axline((0, line.b), slope=line.k, color='blue')
+        #
+        # for circle in self.circles.values():
+        #     ax.add_artist(plt.Circle((circle.center_x, circle.center_y), circle.r, color="green", fill=False))
+        #
+        # for point in self.points.values():
+        #     ax.plot(point.x, point.y, "o", color='red')
+        #     ax.text(point.x - 0.02, point.y, point.name, ha='center', va='bottom')
+        #
+        # plt.show()
+        pass
+
+    def draw_hypergraph(self, filename):
+        pass
+
+    def find_possible_relations(self, problem):
+        pass
