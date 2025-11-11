@@ -1,0 +1,1705 @@
+{
+  "Entity": {
+    "Point(A)": {
+      "temporary": []
+    },
+    "Line": {
+      "temporary": [
+        "Line(AB)",
+        "Line(A;k)"
+      ]
+    },
+    "Circle": {
+      "temporary": [
+        "Circle(ABC)",
+        "Circle(O;AB)"
+      ]
+    }
+  },
+  "Measures": {
+    "XCoordinateOfPoint(A)": {
+      "type": "parameter",
+      "ee_check": [
+        "Point(A)"
+      ],
+      "sym": "x",
+      "multi": []
+    },
+    "YCoordinateOfPoint(A)": {
+      "type": "parameter",
+      "ee_check": [
+        "Point(A)"
+      ],
+      "sym": "y",
+      "multi": []
+    },
+    "KOfLine(l)": {
+      "type": "parameter",
+      "ee_check": [
+        "Line(l)"
+      ],
+      "sym": "k",
+      "multi": []
+    },
+    "BOfLine(l)": {
+      "type": "parameter",
+      "ee_check": [
+        "Line(l)"
+      ],
+      "sym": "b",
+      "multi": []
+    },
+    "CenterAOfCircle(O)": {
+      "type": "parameter",
+      "ee_check": [
+        "Circle(O)"
+      ],
+      "sym": "u",
+      "multi": []
+    },
+    "CenterBOfCircle(O)": {
+      "type": "parameter",
+      "ee_check": [
+        "Circle(O)"
+      ],
+      "sym": "v",
+      "multi": []
+    },
+    "RadiusOfCircle(O)": {
+      "type": "parameter",
+      "ee_check": [
+        "Circle(O)"
+      ],
+      "sym": "r",
+      "multi": []
+    },
+    "DistanceBetweenPointAndPoint(A,B)": {
+      "type": "attribution",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)"
+      ],
+      "sym": "dpp",
+      "multi": []
+    },
+    "DistanceBetweenPointAndLine(A,l)": {
+      "type": "attribution",
+      "ee_check": [
+        "Point(A)",
+        "Line(l)"
+      ],
+      "sym": "dpl",
+      "multi": []
+    },
+    "DistanceBetweenPointAndCircle(A,O)": {
+      "type": "attribution",
+      "ee_check": [
+        "Point(A)",
+        "Circle(O)"
+      ],
+      "sym": "dpc",
+      "multi": []
+    },
+    "MeasureOfAngle(l,k)": {
+      "type": "attribution",
+      "ee_check": [
+        "Line(l)",
+        "Line(k)"
+      ],
+      "sym": "ma",
+      "multi": []
+    },
+    "RadiusOfCircle(O)": {
+      "type": "attribution",
+      "ee_check": [
+        "Circle(O)"
+      ],
+      "sym": "rad",
+      "multi": []
+    }
+  },
+  "Relations": {
+    "FreePoint(A)": {
+      "type": "basic",
+      "ee_check": ["Point(A)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": ""
+    },
+    "FreeLine(a)": {
+      "type": "basic",
+      "ee_check": ["Line(a)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": ""
+    },
+    "FreeCircle(O)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": ""
+    },
+    "SamePoint(A,B)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)"],
+      "implicit_entity": [],
+      "extend": ["SamePoint(B,A)","Eq(Sub(AB.dpp,0))"],
+      "constraints": "Eq(A.x,B.x)&Eq(A.y,B.y)"
+    },
+    "PointOnLine(A,l)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Line(l)"],
+      "implicit_entity": [],
+      "extend": ["Eq(Sub(Al.dpl, 0))"],
+      "constraints": "Eq(Sub(A.y,Add(Mul(l.k,A.x),l.b)))"
+    },
+    "PointFrontSegment(A,B,C)": {
+      "type": "indirect",
+      "ee_check": ["Point(A)","Point(B)","Point(C)"],
+      "implicit_entity": [
+        "Line(l):PointOnLine(B,l)&PointOnLine(C,l)"
+      ],
+      "extend": ["Pointfrontofsegment(B,A,C)"],
+      "constraints": "PointOnLine(A,l)&L(Mul(Sub(A.x,C.x),Sub(B.x,C.x)))"
+    },
+    "PointLeftSegment(A,B,C)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)","Point(C)"],
+      "implicit_entity": [],
+      "extend": ["PointLeftSegment(B,C,A)","PointLeftSegment(C,A,B)","PointRightSegment(A,C,B)","PointRightSegment(B,A,C)","PointRightSegment(C,B,A)"],
+      "constraints": "G(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))"
+    },
+    "PointRightSegment(A,B,C)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)","Point(C)"],
+      "implicit_entity": [],
+      "extend": ["PointRightSegment(B,C,A)","PointRightSegment(C,A,B)","PointLeftSegment(A,C,B)","PointLeftSegment(B,A,C)","PointLeftSegment(C,B,A)"],
+      "constraints": "L(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))"
+    },
+    "ClockwiseTriangle(A,B,C,a,b,c)": {
+      "type": "composite",
+      "ee_check": ["Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [],
+      "extend": ["ClockwiseTriangle(B,C,A,b,c,a)","ClockwiseTriangle(C,A,B,c,a,b)"],
+      "constraints": "PointOnLine(A,b)&PointOnLine(A,c)&PointOnLine(B,a)&PointOnLine(B,c)&PointOnLine(C,a)&PointOnLine(C,b)&PointRightSegment(C,A,B)"
+    },
+    "PointInSegment(A,B,C)": {
+      "type": "indirect",
+      "ee_check": ["Point(A)","Point(B)","Point(C)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "PointFrontSegment(C,B,A)"
+    },
+    "PointMidOfSegment(A,B,C)": {
+      "type": "indirect",
+      "ee_check": ["Point(A)","Point(B)","Point(C)"],
+      "implicit_entity": [
+        "Line(l):PointOnLine(B,l)&PointOnLine(C,l)"
+      ],
+      "extend": [],
+      "constraints": "PointOnLine(A,l)&SegmentEqualSegment(A,B,A,C)"
+    },
+    "PointInAngle(A,l,m)": {
+      "type": "indirect",
+      "ee_check": ["Point(A)","Line(l)","Line(m)"],
+      "implicit_entity": [
+        "Point(S):PointOnLine(S,l)&PointOnLine(S,m)",
+        "Line(n):PointOnLine(S,n)&PointOnLine(A,n)"
+      ],
+      "extend": [],
+      "constraints": "Eq(Sub(Add(MA(l.k,n.k),MA(n.k,m.k)),MA(l.k,m.k)))"
+    },
+    "PointOutnAngle(A,l,m)": {
+      "type": "indirect",
+      "ee_check": ["Point(A)","Line(l)","Line(m)"],
+      "implicit_entity": [
+        "Point(S):PointOnLine(S,l)&PointOnLine(S,m)",
+        "Line(n):PointOnLine(S,n)&PointOnLine(A,n)"
+      ],
+      "extend": [],
+      "constraints": "Eq(Sub(MA(n.k,m.k),Add(MA(n.k,l.k),MA(l.k,m.k))))"
+    },
+    "PointIsCircleCenter(A,O)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": ["Eq(Sub(AO.dpc,0))"],
+      "constraints": "Eq(Sub(A.x,O.u))&Eq(Sub(A.y,O.v))"
+    },
+    "PointOnCircle(A,O)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": ["Eq(Sub(AO.dpc,O.rad))"],
+      "constraints": "Eq(Sub(Pow(Add(Pow(Sub(A.x,O.u),2),Pow(Sub(A.y,O.v),2)),1/2),O.r))"
+    },
+    "PointInCircle(A,O)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "L(Sub(Pow(Add(Pow(Sub(A.x,O.u),2),Pow(Sub(A.y,O.v),2)),1/2),O.r))"
+    },
+    "PointOutCircle(A,O)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "G(Sub(Pow(Add(Pow(Sub(A.x,O.u),2),Pow(Sub(A.y,O.v),2)),1/2),O.r))"
+    },
+    "PointonArc(A,O,B,C)": {
+      "type": "composite",
+      "ee_check": ["Point(A)","Circle(O)","Point(B)","Point(C)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&PointLeftSegment(A,C,B)"
+    },
+    "PointMidArc(A,O,B,C)": {
+      "type": "composite",
+      "ee_check": ["Point(A)","Circle(O)","Point(B)","Point(C)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "PointonArc(A,O,B,C)&SegmentEqualSegment(B,A,A,C)"
+    },
+    "PointInClockwiseTriangle(P,A,B,C,a,b,c)": {
+      "type": "composite",
+      "ee_check": ["Point(P)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&PointRightSegment(P,A,B)&PointRightSegment(P,C,A)&PointRightSegment(P,B,C)"
+    },
+    "PointIsCircumcenterOfClockwiseTriangle(P,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Point(P)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Line(n):LineIsPerpendicularBisectorOfSegment(n,A,B)",
+        "Line(m):LineIsPerpendicularBisectorOfSegment(m,B,C)"
+      ],
+      "extend": ["PointIsCircumcenterOfClockwiseTriangle(P,B,C,A,b,c,a)","PointIsCircumcenterOfClockwiseTriangle(P,C,A,B,c,a,b)"],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&PointOnLine(P,n)&PointOnLine(P,m)"
+    },
+    "PointIsIncenterOfClockwiseTriangle(P,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Point(P)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Line(n):AngleEqualAngle(c,n,n,b)&PointOnLine(A,n)",
+        "Line(m):AngleEqualAngle(b,m,m,a)&PointOnLine(C,m)"
+      ],
+      "extend": ["PointIsIncenterOfClockwiseTriangle(P,B,C,A,b,c,a)","PointIsIncenterOfClockwiseTriangle(P,C,A,B,c,a,b)"],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&PointOnLine(P,n)&PointOnLine(P,m)"
+    },
+    "PointIsCentroidOfClockwiseTriangle(P,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Point(P)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Point(D):PointMidOfSegment(D,B,C)",
+        "Point(E):PointMidOfSegment(E,A,C)",
+        "Line(n):PointOnLine(A,n)&PointOnLine(D,n)",
+        "Line(m):PointOnLine(B,m)&PointOnLine(E,m)"
+      ],
+      "extend": ["PointIsCentroidOfClockwiseTriangle(P,B,C,A,b,c,a)","PointIsCentroidOfClockwiseTriangle(P,C,A,B,c,a,b)"],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&PointOnLine(P,n)&PointOnLine(P,m)"
+    },
+    "PointIsOrthocenterOfClockwiseTriangle(P,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Point(P)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Line(n):LinesPerpendicular(n,a)&PointOnLine(A,n)",
+        "Line(m):LinesPerpendicular(m,b)&PointOnLine(B,m)"
+      ],
+      "extend": ["PointIsOrthocenterOfClockwiseTriangle(P,B,C,A,b,c,a)","PointIsOrthocenterOfClockwiseTriangle(P,C,A,B,c,a,b)"],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&PointOnLine(P,n)&PointOnLine(P,m)"
+    },
+    "PointIsFirstExcenterOfClockwiseTriangle(P,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Point(P)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Line(n):AngleEqualAngle(c,n,n,b)&PointOnLine(A,n)",
+        "Line(m):AngleEqualAngle(c,m,m,a)&PointOnLine(B,m)"
+      ],
+      "extend": [],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&PointOnLine(P,n)&PointOnLine(P,m)"
+    },
+    "SameLine(a,b)": {
+      "type": "basic",
+      "ee_check": ["Line(a)","Line(b)"],
+      "implicit_entity": [],
+      "extend": ["SameLine(b,a)","Eq(Sub(ab.ma,0))"],
+      "constraints": "Eq(Sub(a.k,b.k))&Eq(Sub(a.b,b.b))"
+    },
+    "LinesParallel(a,b)": {
+      "type": "basic",
+      "ee_check": ["Line(a)","Line(b)"],
+      "implicit_entity": [],
+      "extend": ["LinesParallel(a,b)","Eq(Sub(ab.ma,0))"],
+      "constraints": "Eq(Sub(a.k,b.k))"
+    },
+    "LinesPerpendicular(a,b)": {
+      "type": "basic",
+      "ee_check": ["Line(a)","Line(b)"],
+      "implicit_entity": [],
+      "extend": ["LinesPerpendicular(b,a)","Eq(Sub(ab.ma,90))"],
+      "constraints": "Eq(Sub(Mul(a.k,b.k),-1))"
+    },
+    "LineIsPerpendicularBisectorOfSegment(l,A,B)": {
+      "type": "indirect",
+      "ee_check": ["Line(l)","Point(A)","Point(B)"],
+      "implicit_entity": [
+        "Line(c):PointOnLine(A,c)&PointOnLine(B,c)",
+        "Point(D):PointMidOfSegment(D,A,B)"
+      ],
+      "extend": [],
+      "constraints": "PointOnLine(D,l)&LinesPerpendicular(l,c)"
+    },
+    "LineIsAngleBisector(l,a,b)": {
+      "type": "indirect",
+      "ee_check": ["Line(l)","Line(a)","Line(b)"],
+      "implicit_entity": [
+        "Point(C):PointOnLine(C,a)&PointOnLine(C,b)"
+      ],
+      "extend": [],
+      "constraints": "PointOnLine(C,l)&AngleEqualAngle(a,l,l,b)"
+    },
+    "LineTangentToCircle(l,O)": {
+      "type": "basic",
+      "ee_check": ["Line(l)","Circle(O)"],
+      "implicit_entity": [
+      ],
+      "extend": [],
+      "constraints": "Eq(Sub(Div(Abs(Sub(Sub(O.v,Mul(l.k,O.u)),l.b)),Pow(Add(Mul(l.k,l.k),1),1/2)),O.r))"
+    },
+    "LineSeparateFromCircle(l,O)": {
+      "type": "basic",
+      "ee_check": ["Line(l)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "G(Sub(Div(Abs(Sub(Sub(O.v,Mul(l.k,O.u)),l.b)),Pow(Add(Mul(l.k,l.k),1),1/2)),O.r))"
+    },
+    "LineIntersectCircle(l,O)": {
+      "type": "basic",
+      "ee_check": ["Line(l)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": [],
+      "constraints": "L(Sub(Div(Abs(Sub(Sub(O.v,Mul(l.k,O.u)),l.b)),Pow(Add(Mul(l.k,l.k),1),1/2)),O.r))"
+    },
+    "SegmentEqualSegment(A,B,C,D)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)","Point(C)","Point(D)"],
+      "implicit_entity": [],
+      "extend": ["SegmentEqualSegment(B,A,C,D)","SegmentEqualSegment(C,D,A,B)","Eq(Sub(AB.dpp, CD.dpp))"],
+      "constraints": "Eq(Sub(Pow(Add(Pow(Sub(A.x,B.x),2),Pow(Sub(A.y,B.y),2)),1/2),Pow(Add(Pow(Sub(C.x,D.x),2),Pow(Sub(C.y,D.y),2)),1/2)))"
+    },
+    "SegmentGreaterSegment(A,B,C,D)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)","Point(C)","Point(D)"],
+      "implicit_entity": [],
+      "extend": ["SegmentGreaterSegment(B,A,C,D)","SegmentGreaterSegment(A,B,D,C)"],
+      "constraints": "G(Sub(Add(Pow(Sub(A.x,B.x),2),Pow(Sub(A.y,B.y),2)),Add(Pow(Sub(C.x,D.x),2),Pow(Sub(C.y,D.y),2))))"
+    },
+    "SegmentEqualCircleRadius(A,B,O)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": ["SegmentEqualCircleRadius(B,A,O)","Eq(Sub(O.rad,AB.dpp))"],
+      "constraints": "Eq(Sub(O.r,Pow(Add(Pow(Sub(A.x,B.x),2),Pow(Sub(A.y,B.y),2)),1/2)))"
+    },
+    "SegmentGreaterCircleRadius(A,B,O)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": ["SegmentGreaterCircleRadius(B,A,O)"],
+      "constraints": "L(Sub(O.r,Pow(Add(Pow(Sub(A.x,B.x),2),Pow(Sub(A.y,B.y),2)),1/2)))"
+    },
+    "SegmentSmallerCircleRadius(A,B,O)": {
+      "type": "basic",
+      "ee_check": ["Point(A)","Point(B)","Circle(O)"],
+      "implicit_entity": [],
+      "extend": ["SegmentSmallerCircleRadius(B,A,O)"],
+      "constraints": "G(Sub(O.r,Pow(Add(Pow(Sub(A.x,B.x),2),Pow(Sub(A.y,B.y),2)),1/2)))"
+    },
+    "AngleEqualAngle(a,b,c,d)": {
+      "type": "basic",
+      "ee_check": ["Line(a)","Line(b)","Line(c)","Line(d)"],
+      "implicit_entity": [],
+      "extend": ["AngleEqualAngle(b,a,d,c)","AngleEqualAngle(c,d,a,b)","Eq(Sub(ab.ma,cd.ma))"],
+      "constraints": "Eq(Sub(MA(a.k,b.k),MA(c.k,d.k)))"
+    },
+    "AngleGreaterAngle(a,b,c,d)": {
+      "type": "basic",
+      "ee_check": ["Line(a)","Line(b)","Line(c)","Line(d)"],
+      "implicit_entity": [],
+      "extend": ["AngleGreaterAngle(d,c,b,a)"],
+      "constraints": "G(Sub(MA(a.k, b.k),MA(c.k,d.k)))"
+    },
+    "SameCircle(O,Q)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)","Circle(Q)"],
+      "implicit_entity": [],
+      "extend": ["SameCircle(Q,O)","Eq(Sub(O.rad,Q.rad))"],
+      "constraints": "Eq(Sub(O.u,Q.u))&Eq(Sub(O.v,Q.v))&Eq(Sub(O.r,Q.r))"
+    },
+    "CirclesCongruent(O,Q)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)","Circle(Q)"],
+      "implicit_entity": [],
+      "extend": ["CirclesCongruent(Q,O)","Eq(Sub(O.rad,Q.rad))"],
+      "constraints": "Eq(Sub(O.r,Q.r))"
+    },
+    "CirclesExternallySeparate(O,Q)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)","Circle(Q)"],
+      "implicit_entity": [],
+      "extend": ["CirclesExternallySeparate(Q,O)"],
+      "constraints": "G(Sub(Pow(Add(Pow(Sub(O.u,Q.u),2),Pow(Sub(O.v,Q.v),2)),1/2),Add(O.r,Q.r)))"
+    },
+    "CirclesExternallyTangent(O,Q)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)","Circle(Q)"],
+      "implicit_entity": [],
+      "extend": ["CirclesExternallyTangent(Q,O)"],
+      "constraints": "Eq(Sub(Pow(Add(Pow(Sub(O.u,Q.u),2),Pow(Sub(O.v,Q.v),2)),1/2),Add(O.r,Q.r)))"
+    },
+    "CirclesIntersect(O,Q)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)","Circle(Q)"],
+      "implicit_entity": [],
+      "extend": ["CirclesIntersect(Q,O)"],
+      "constraints": "L(Sub(Abs(Sub(O.r,Q.r)),Pow(Add(Pow(Sub(O.u,Q.u),2),Pow(Sub(O.v,Q.v),2)),1/2)))&L(Sub(Pow(Add(Pow(Sub(O.u,Q.u),2),Pow(Sub(O.v,Q.v),2)),1/2),Add(O.r,Q.r)))"
+    },
+    "CirclesInternallyTangent(O,Q)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)","Circle(Q)"],
+      "implicit_entity": [],
+      "extend": ["CirclesInternallyTangent(Q,O)"],
+      "constraints": "Eq(Sub(Pow(Add(Pow(Sub(O.u,Q.u),2),Pow(Sub(O.v,Q.v),2)),1/2),Abs(Sub(O.r,Q.r))))"
+    },
+    "CircleContainedInCircle(O,Q)": {
+      "type": "basic",
+      "ee_check": ["Circle(O)","Circle(Q)"],
+      "implicit_entity": [],
+      "extend": ["CircleContainedInCircle(Q,O)"],
+      "constraints": "L(Sub(Pow(Add(Pow(Sub(O.u,Q.u),2),Pow(Sub(O.v,Q.v),2)),1/2),Abs(Sub(O.r,Q.r))))"
+    },
+    "CircleIsCircumscribedCircleOfClockwiseTriangle(O,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Circle(O)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Point(P):PointIsCircumcenterOfClockwiseTriangle(P,A,B,C,a,b,c)"
+      ],
+      "extend": ["CircleIsCircumscribedCircleOfClockwiseTriangle(O,B,C,A,b,c,a)","CircleIsCircumscribedCircleOfClockwiseTriangle(O,C,A,B,c,a,b)"],
+      "constraints": "PointIsCircleCenter(P,O)&SegmentEqualCircleRadius(P,A,O)"
+    },
+    "CircleIsInscribedCircleOfClockwiseTriangle(O,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Circle(O)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Point(P):PointIsIncenterOfClockwiseTriangle(P,A,B,C,a,b,c)",
+        "Line(l):LinesPerpendicular(a,l)&PointOnLine(P,l)",
+        "Point(Q):PointOnLine(Q,l)&PointOnLine(Q,a)"
+      ],
+      "extend": ["CircleIsInscribedCircleOfClockwiseTriangle(O,B,C,A,b,c,a)","CircleIsInscribedCircleOfClockwiseTriangle(O,C,A,B,c,a,b)"],
+      "constraints": "PointIsCircleCenter(P,O)&SegmentEqualCircleRadius(P,Q,O)"
+    },
+    "CircleIsFirstExscribedCircleOfClockwiseTriangle(O,A,B,C,a,b,c)": {
+      "type": "indirect",
+      "ee_check": ["Circle(O)","Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)"],
+      "implicit_entity": [
+        "Point(P):PointIsFirstExcenterOfClockwiseTriangle(P,A,B,C,a,b,c)",
+        "Line(l):LinesPerpendicular(a,l)&PointOnLine(P,l)",
+        "Point(Q):PointOnLine(Q,l)&PointOnLine(Q,a)"
+      ],
+      "extend": [],
+      "constraints": "PointIsCircleCenter(P,O)&SegmentEqualCircleRadius(P,Q,O)"
+    },
+    "ArcEqualArc(O,A,B,Q,C,D)": {
+      "type": "indirect",
+      "ee_check": ["Circle(O)","Point(A)","Point(B)","Circle(Q)","Point(C)","Point(D)"],
+      "implicit_entity": [
+        "Point(X):PointIsCircleCenter(X,O)",
+        "Line(a):PointOnLine(A,a)&PointOnLine(X,a)",
+        "Line(b):PointOnLine(B,b)&PointOnLine(X,b)",
+        "Point(Y):PointIsCircleCenter(Y,Q)",
+        "Line(c):PointOnLine(C,c)&PointOnLine(Y,c)",
+        "Line(d):PointOnLine(D,d)&PointOnLine(Y,d)"
+      ],
+      "extend": ["ArcEqualArc(O,B,A,Q,D,C)","ArcEqualArc(Q,C,D,O,A,B)"],
+      "constraints": "Eq(Sub(Mul(O.r,MA(a,b)),Mul(Q.r,MA(c,d))))"
+    },
+    "ArcGreaterArc(O,A,B,Q,C,D)": {
+      "type": "indirect",
+      "ee_check": ["Circle(O)","Point(A)","Point(B)","Circle(Q)","Point(C)","Point(D)"],
+      "implicit_entity": [
+        "Point(X):PointIsCircleCenter(X,O)",
+        "Line(a):PointOnLine(A,a)&PointOnLine(X,a)",
+        "Line(b):PointOnLine(B,b)&PointOnLine(X,b)",
+        "Point(Y):PointIsCircleCenter(Y,Q)",
+        "Line(c):PointOnLine(C,c)&PointOnLine(Y,c)",
+        "Line(d):PointOnLine(D,d)&PointOnLine(Y,d)"
+      ],
+      "extend": [],
+      "constraints": "G(Sub(Mul(O.r,MA(a,b)),Mul(Q.r,MA(c,d))))"
+    },
+    "TriangleCongruentTriangle(A,B,C,a,b,c,D,E,F,d,e,f)": {
+      "type": "composite",
+      "ee_check": ["Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)","Point(D)","Point(E)","Point(F)","Line(d)","Line(e)","Line(f)"],
+      "implicit_entity": [],
+      "extend": [
+        "TriangleCongruentTriangle(B,C,A,b,c,a,E,F,D,e,f,d)",
+        "TriangleCongruentTriangle(C,A,B,c,a,b,F,D,E,f,d,e)",
+        "TriangleCongruentTriangle(D,E,F,d,e,f,A,B,C,a,b,c)"
+      ],
+      "constraints": "TriangleSimilarTriangle(A,B,C,a,b,c,D,E,F,d,e,f)&SegmentEqualSegment(A,B,D,E) "
+    },
+    "TriangleMirrorCongruentTriangle(A,B,C,a,b,c,D,E,F,d,e,f)": {
+      "type": "composite",
+      "ee_check": ["Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)","Point(D)","Point(E)","Point(F)","Line(d)","Line(e)","Line(f)"],
+      "implicit_entity": [],
+      "extend": [
+        "TriangleMirrorCongruentTriangle(B,C,A,b,c,a,E,F,D,e,f,d)",
+        "TriangleMirrorCongruentTriangle(C,A,B,c,a,b,F,D,E,f,d,e)",
+        "TriangleMirrorCongruentTriangle(D,E,F,d,e,f,A,B,C,a,b,c)"
+      ],
+      "constraints": "TriangleMirrorSimilarTriangle(A,B,C,a,b,c,D,E,F,d,e,f)&SegmentEqualSegment(A,B,D,E)"
+    },
+    "TriangleSimilarTriangle(A,B,C,a,b,c,D,E,F,d,e,f)": {
+      "type": "composite",
+      "ee_check": ["Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)","Point(D)","Point(E)","Point(F)","Line(d)","Line(e)","Line(f)"],
+      "implicit_entity": [],
+      "extend": [
+        "TriangleSimilarTriangle(B,C,A,b,c,a,E,F,D,e,f,d)",
+        "TriangleSimilarTriangle(C,A,B,c,a,b,F,D,E,f,d,e)",
+        "TriangleSimilarTriangle(D,E,F,d,e,f,A,B,C,a,b,c)"
+      ],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&ClockwiseTriangle(D,E,F,d,e,f)&AngleEqualAngle(c,b,f,e)&AngleEqualAngle(a,c,d,f)"
+    },
+    "TriangleMirrorSimilarTriangle(A,B,C,a,b,c,D,E,F,d,e,f)": {
+      "type": "composite",
+      "ee_check": ["Point(A)","Point(B)","Point(C)","Line(a)","Line(b)","Line(c)","Point(D)","Point(E)","Point(F)","Line(d)","Line(e)","Line(f)"],
+      "implicit_entity": [],
+      "extend": [
+        "TriangleMirrorSimilarTriangle(B,C,A,b,c,a,E,F,D,e,f,d)",
+        "TriangleMirrorSimilarTriangle(C,A,B,c,a,b,F,D,E,f,d,e)",
+        "TriangleMirrorSimilarTriangle(D,E,F,d,e,f,A,B,C,a,b,c)"
+      ],
+      "constraints": "ClockwiseTriangle(A,B,C,a,b,c)&ClockwiseTriangle(D,F,E,d,f,e)&AngleEqualAngle(c,b,e,f)&AngleEqualAngle(a,c,f,d)"
+    }
+  },
+  "Theorems":{
+    "D6(a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "LinesParallel(a,b)&LinesParallel(b,c)",
+      "conclusion": [
+        "LinesParallel(a,c)"
+      ],
+      "proving": {}
+    },
+    "D9(a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "LinesPerpendicular(a,b)&LinesPerpendicular(b,c)",
+      "conclusion": [
+        "LinesParallel(a,c)"
+      ],
+      "proving": {}
+    },
+    "D10(a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "LinesParallel(a,b)&LinesPerpendicular(b,c)",
+      "conclusion": [
+        "LinesPerpendicular(a,c)"
+      ],
+      "proving": {}
+    },
+    "D22(a,b,c,d,e,f)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(d)",
+        "Line(e)",
+        "Line(f)"
+      ],
+      "ac_check": "",
+      "premise": "AngleEqualAngle(a,b,c,d)&AngleEqualAngle(c,d,e,f)",
+      "conclusion": [
+        "AngleEqualAngle(a,b,e,f)"
+      ],
+      "proving": {}
+    },
+    "D25(A,B,C,D,E,F)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(D)",
+        "Point(E)",
+        "Point(F)"
+      ],
+      "ac_check": "",
+      "premise": "SegmentEqualSegment(A,B,C,D)&SegmentEqualSegment(C,D,E,F)",
+      "conclusion": [
+        "SegmentEqualSegment(A,B,E,F)"
+      ],
+      "proving": {}
+    },
+    "D39(a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "AngleEqualAngle(b,a,b,c)",
+      "conclusion": [
+        "LinesParallel(a,c)"
+      ],
+      "proving": {}
+    },
+    "D40(a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "LinesParallel(a,c)",
+      "conclusion": [
+        "AngleEqualAngle(b,a,b,c)"
+      ],
+      "proving": {}
+    },
+    "D41(O,A,B,P,Q,a,b,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(P)",
+        "Point(Q)",
+        "Line(a)",
+        "Line(b)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(P,O)&PointOnCircle(Q,O)&PointOnLine(P,a)&PointOnLine(A,a)&PointOnLine(P,b)&PointOnLine(B,b)&PointOnLine(Q,l)&PointOnLine(A,l)&PointOnLine(Q,m)&PointOnLine(B,m)",
+
+      "conclusion": [
+        "AngleEqualAngle(b,a,m,l)"
+      ],
+      "proving": {}
+    },
+    "D42(O,A,B,P,Q,a,b,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(P)",
+        "Point(Q)",
+        "Line(a)",
+        "Line(b)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(P,O)&AngleEqualAngle(b,a,b,c)&PointOnLine(P,a)&PointOnLine(A,a)&PointOnLine(P,b)&PointOnLine(B,b)&PointOnLine(Q,l)&PointOnLine(A,l)&PointOnLine(Q,m)&PointOnLine(B,m)",
+
+      "conclusion": [
+        "PointOnCircle(Q,O)"
+      ],
+      "proving": {}
+    },
+    "D43(O,A,B,C,P,Q,R,a,b,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(P)",
+        "Point(Q)",
+        "Point(R)",
+        "Line(a)",
+        "Line(b)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&PointOnCircle(P,O)&PointOnCircle(Q,O)&PointOnCircle(R,O)&PointOnLine(A,a)&PointOnLine(C,a)&PointOnLine(B,b)&PointOnLine(C,b)&PointOnLine(P,l)&PointOnLine(R,l)&PointOnLine(Q,m)&PointOnLine(R,m)&AngleEqualAngle(a,b,l,m)",
+
+      "conclusion": [
+        "SegmentEqualSegment(A,B,P,Q)"
+      ],
+      "proving": {}
+    },
+    "D44(A,B,C,E,F,a,b,c,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(E)",
+        "Point(F)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(F,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnLine(E,c)&SegmentEqualSegment(F,A,F,C)&SegmentEqualSegment(E,A,E,B)&PointOnLine(E,l)&PointOnLine(F,l)",
+      "conclusion": [
+        "LinesParallel(l,a)"
+      ],
+      "proving": {}
+    },
+    "D45(A,B,C,E,F,a,b,c,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(E)",
+        "Point(F)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(F,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnLine(E,c)&SegmentEqualSegment(E,A,E,B)&PointOnLine(E,l)&PointOnLine(F,l)&LinesParallel(l,a)",
+      "conclusion": [
+        "SegmentEqualSegment(F,A,F,C)"
+      ],
+      "proving": {}
+    },
+    "D46(A,B,C,a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&SegmentEqualSegment(C,A,C,B)",
+      "conclusion": [
+        "AngleEqualAngle(b,c,c,a)"
+      ],
+      "proving": {}
+    },
+    "D47(A,B,C,a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "Ueq(Sub(C.y,Add(Mul(a.k,C.x),a.b)))",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&AngleEqualAngle(b,c,c,a) ",
+      "conclusion": [
+        "SegmentEqualSegment(C,A,C,B)"
+      ],
+      "proving": {}
+    },
+    "D48(O,A,B,C,a,b,c,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&LineTangentToCircle(l,O)&PointOnLine(A,l)",
+      "conclusion": [
+        "AngleEqualAngle(l,c,b,a)"
+      ],
+      "proving": {}
+    },
+    "D49(O,A,B,C,a,b,c,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&PointOnLine(A,l)&AngleEqualAngle(l,c,b,a)",
+      "conclusion": [
+        "LineTangentToCircle(l,O)"
+      ],
+      "proving": {}
+    },
+    "D50(O,P,A,B,C,M,a,b,c,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(P)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(M)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&PointOnLine(M,a)&SegmentEqualSegment(B,M,C,M)&PointIsCircleCenter(P,O)&PointOnLine(P,l)&PointOnLine(B,l)&PointOnLine(P,m)&PointOnLine(M,m)",
+      "conclusion": [
+        "AngleEqualAngle(c,b,l,m)"
+      ],
+      "proving": {}
+    },
+    "D51(O,P,A,B,C,M,a,b,c,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(P)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(M)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&PointOnLine(M,a)&AngleEqualAngle(c,b,l,m)&PointIsCircleCenter(P,O)&PointOnLine(P,l)&PointOnLine(B,l)&PointOnLine(P,m)&PointOnLine(M,m)",
+      "conclusion": [
+        "SegmentEqualSegment(B,M,C,M)"
+      ],
+      "proving": {}
+    },
+    "D52(A,B,C,M,a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(M)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&LinesPerpendicular(c,a)&PointOnLine(M,b)&SegmentEqualSegment(A,M,C,M)",
+      "conclusion": [
+        "SegmentEqualSegment(A,M,B,M)"
+      ],
+      "proving": {}
+    },
+    "D53(O,P,A,B,C,a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(P)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointIsCircleCenter(P,O)&PointOnLine(P,b)",
+      "conclusion": [
+        "LinesPerpendicular(a,c)"
+      ],
+      "proving": {}
+    },
+    "D54(O,A,B,C,D,i,j,k,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(D)",
+        "Line(i)",
+        "Line(j)",
+        "Line(k)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(B,k)&PointOnLine(C,k)&PointOnLine(A,l)&PointOnLine(D,l)&PointOnLine(A,i)&PointOnLine(B,i)&PointOnLine(C,j)&PointOnLine(D,j)&PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&PointOnCircle(D,O)&LinesParallel(i,j)",
+      "conclusion": [
+        "AngleEqualAngle(k,j,j,l)"
+      ],
+      "proving": {}
+    },
+    "D55(A,B,C,M,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(M)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(M,l)&PointOnLine(C,m)&PointOnLine(M,m)&LinesPerpendicular(l,m)&SegmentEqualSegment(B,M,A,M)",
+      "conclusion": [
+        "SegmentEqualSegment(B,C,A,C)"
+      ],
+      "proving": {}
+    },
+    "D56(A,B,P,Q,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(P)",
+        "Point(Q)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(P,m)&PointOnLine(Q,m)&SegmentEqualSegment(B,P,A,P)&SegmentEqualSegment(B,Q,A,Q)",
+      "conclusion": [
+        "LinesPerpendicular(l,m)"
+      ],
+      "proving": {}
+    },
+    "D57(O,A,B,P,Q,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(P)",
+        "Point(Q)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(P,O)&PointOnCircle(Q,O)&PointOnLine(A,l)&PointOnLine(P,l)&PointOnLine(A,m)&PointOnLine(Q,m)&SegmentEqualSegment(B,P,A,P)&SegmentEqualSegment(B,Q,A,Q)",
+      "conclusion": [
+        "LinesPerpendicular(l,m)"
+      ],
+      "proving": {}
+    },
+    "D63(A,B,C,D,M,i,j,k,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(D)",
+        "Point(M)",
+        "Line(i)",
+        "Line(j)",
+        "Line(k)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,k)&PointOnLine(C,k)&PointOnLine(B,l)&PointOnLine(D,l)&PointOnLine(A,i)&PointOnLine(B,i)&PointOnLine(M,i)&PointOnLine(C,j)&PointOnLine(D,j)&PointOnLine(M,j)&SegmentEqualSegment(A,M,B,M)&SegmentEqualSegment(C,M,D,M) ",
+      "conclusion": [
+        "LinesParallel(k,l)"
+      ],
+      "proving": {}
+    },
+    "D64(A,B,C,D,M,i,j,k,l,m,n)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(D)",
+        "Point(M)",
+        "Line(i)",
+        "Line(j)",
+        "Line(k)",
+        "Line(l)",
+        "Line(m)",
+        "Line(n)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,k)&PointOnLine(C,k)&PointOnLine(B,l)&PointOnLine(D,l)&PointOnLine(A,i)&PointOnLine(B,i)&PointOnLine(M,i)&PointOnLine(C,j)&PointOnLine(D,j)&PointOnLine(B,m)&PointOnLine(C,m)&PointOnLine(A,n)&PointOnLine(D,n)&SegmentEqualSegment(A,M,B,M)&LinesParallel(k,l)&LinesParallel(m,n)",
+      "conclusion": [
+        "PointOnLine(M,j)",
+        "SegmentEqualSegment(C,M,D,M)"
+      ],
+      "proving": {}
+    },
+    "D66(A,a,b)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Line(a)",
+        "Line(b)"
+      ],
+      "ac_check": "",
+      "premise": "LinesParallel(a,b)&PointOnLine(A,a)&PointOnLine(A,b)",
+      "conclusion": [
+        "SameLine(a,b)"
+      ],
+      "proving": {}
+    },
+    "顺时针三角形ABC内角和(A,B,C,a,b,c)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)"
+      ],
+      "ac_check": "L(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)",
+      "conclusion": [
+        "Eq(Sub(Add(ac.ma,ba.ma,cb.ma),180))"
+      ],
+      "proving": {}
+    },
+    "A17(a,b)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)"
+      ],
+      "ac_check": "Ueq(Sub(a.k,b.k))",
+      "premise": "",
+      "conclusion": [
+        "Eq(Sub(Add(ab.ma,ba.ma),180))"
+      ],
+      "proving": {}
+    },
+    "D58+D59三角形ABC相似于三角形PQR，ABC顺时针,PQR顺时针(A,B,C,a,b,c,P,Q,R,p,q,r)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Point(P)",
+        "Point(Q)",
+        "Point(R)",
+        "Line(p)",
+        "Line(q)",
+        "Line(r)"
+      ],
+      "ac_check": "L(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))&L(Sub(Mul(Sub(R.x,Q.x),Sub(P.y,Q.y)),Mul(Sub(R.y,Q.y),Sub(P.x,Q.x))))",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnLine(Q,p)&PointOnLine(R,p)&PointOnLine(P,q)&PointOnLine(R,q)&PointOnLine(P,r)&PointOnLine(Q,r)&AngleEqualAngle(a,c,p,r)&AngleEqualAngle(c,b,r,q)",
+      "conclusion": [
+        "Eq(Sub(Div(AB.dpp,PQ.dpp),Div(BC.dpp,QR.dpp)))",
+        "Eq(Sub(Div(AB.dpp,PQ.dpp),Div(AC.dpp,PR.dpp)))",
+        "Eq(Sub(Div(AC.dpp,PR.dpp),Div(BC.dpp,QR.dpp)))"
+      ],
+      "proving": {}
+    },
+    "D58+D59三角形ABC镜像相似于三角形PQR,ABC顺时针,PRQ顺时针(A,B,C,a,b,c,P,Q,R,p,q,r)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Point(P)",
+        "Point(Q)",
+        "Point(R)",
+        "Line(p)",
+        "Line(q)",
+        "Line(r)"
+      ],
+      "ac_check": "L(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))&G(Sub(Mul(Sub(R.x,Q.x),Sub(P.y,Q.y)),Mul(Sub(R.y,Q.y),Sub(P.x,Q.x))))",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnLine(Q,p)&PointOnLine(R,p)&PointOnLine(P,q)&PointOnLine(R,q)&PointOnLine(P,r)&PointOnLine(Q,r)&AngleEqualAngle(a,c,r,p)&AngleEqualAngle(c,b,q,r)",
+      "conclusion": [
+        "Eq(Sub(Div(AB.dpp,PQ.dpp),Div(BC.dpp,QR.dpp)))",
+        "Eq(Sub(Div(AB.dpp,PQ.dpp),Div(AC.dpp,PR.dpp)))",
+        "Eq(Sub(Div(AC.dpp,PR.dpp),Div(BC.dpp,QR.dpp)))"
+      ],
+      "proving": {}
+    },
+    "D61+D62三角形ABC全等于三角形PQR，ABC顺时针,PQR顺时针(A,B,C,a,b,c,P,Q,R,p,q,r)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Point(P)",
+        "Point(Q)",
+        "Point(R)",
+        "Line(p)",
+        "Line(q)",
+        "Line(r)"
+      ],
+      "ac_check": "L(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))&L(Sub(Mul(Sub(R.x,Q.x),Sub(P.y,Q.y)),Mul(Sub(R.y,Q.y),Sub(P.x,Q.x))))",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnLine(Q,p)&PointOnLine(R,p)&PointOnLine(P,q)&PointOnLine(R,q)&PointOnLine(P,r)&PointOnLine(Q,r)&AngleEqualAngle(a,c,p,r)&AngleEqualAngle(c,b,r,q)&SegmentEqualSegment(A,B,P,Q)",
+      "conclusion": [
+        "SegmentEqualSegment(A,C,P,R)",
+        "SegmentEqualSegment(C,B,R,Q)"
+      ],
+      "proving": {}
+    },
+    "D61+D62三角形ABC镜像全等于三角形PQR,ABC顺时针,PRQ顺时针(A,B,C,a,b,c,P,Q,R,p,q,r)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Point(P)",
+        "Point(Q)",
+        "Point(R)",
+        "Line(p)",
+        "Line(q)",
+        "Line(r)"
+      ],
+      "ac_check": "L(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))&G(Sub(Mul(Sub(R.x,Q.x),Sub(P.y,Q.y)),Mul(Sub(R.y,Q.y),Sub(P.x,Q.x))))",
+      "premise": "PointOnLine(B,a)&PointOnLine(C,a)&PointOnLine(A,b)&PointOnLine(C,b)&PointOnLine(A,c)&PointOnLine(B,c)&PointOnLine(Q,p)&PointOnLine(R,p)&PointOnLine(P,q)&PointOnLine(R,q)&PointOnLine(P,r)&PointOnLine(Q,r)&AngleEqualAngle(a,c,r,p)&AngleEqualAngle(c,b,q,r)&SegmentEqualSegment(A,B,P,Q)",
+      "conclusion": [
+        "SegmentEqualSegment(A,C,P,R)",
+        "SegmentEqualSegment(C,B,R,Q)"
+      ],
+      "proving": {}
+    },
+    "D65(P,A,B,C,D,i,j,k,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(P)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(D)",
+        "Line(i)",
+        "Line(j)",
+        "Line(k)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,i)&PointOnLine(C,i)&PointOnLine(P,i)&PointOnLine(B,j)&PointOnLine(D,j)&PointOnLine(P,j)&PointOnLine(A,k)&PointOnLine(B,k)&PointOnLine(C,l)&PointOnLine(D,l)&LinesParallel(k,l)",
+      "conclusion": [
+        "Eq(Sub(Div(PA.dpp,AC.dpp),Div(PB.dpp,BD.dpp)))"
+      ],
+      "proving": {}
+    },
+    "D72(i,j)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(i)",
+        "Line(j)"
+      ],
+      "ac_check": "Ueq(Sub(i.k,j.k))",
+      "premise": "AngleEqualAngle(i,j,j,i)",
+      "conclusion": [
+        "LinesPerpendicular(i,j)"
+      ],
+      "proving": {}
+    },
+    "D71(i,j)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(i)",
+        "Line(j)"
+      ],
+      "ac_check": "Ueq(Sub(Mul(i.k,j.k),-1))",
+      "premise": "AngleEqualAngle(i,j,j,i)",
+      "conclusion": [
+        "LinesParallel(i,j)"
+      ],
+      "proving": {}
+    },
+    "D73(i,j)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(i)",
+        "Line(j)"
+      ],
+      "ac_check": "Ueq(Sub(i.b,j.b))",
+      "premise": "Eq(Sub(ij.ma,0))",
+      "conclusion": [
+        "LinesParallel(i,j)"
+      ],
+      "proving": {}
+    },
+    "D74(i,j)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(i)",
+        "Line(j)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(ij.ma,90))",
+      "conclusion": [
+        "LinesPerpendicular(a,b)"
+      ],
+      "proving": {}
+    },
+    "DcheckSamePoint_1(A,B,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "Ueq(Sub(l.k,m.k))",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(A,m)&PointOnLine(B,m)",
+      "conclusion": [
+        "SamePoint(A,B)"
+      ],
+      "proving": {}
+    },
+    "DcheckSamePoint_2(A,B,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "Ueq(Sub(l.b,m.b))",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(A,m)&PointOnLine(B,m)",
+      "conclusion": [
+        "SamePoint(A,B)"
+      ],
+      "proving": {}
+    },
+    "DcheckSameLine_1(A,B,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "Ueq(Sub(A.x,B.x))",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(A,m)&PointOnLine(B,m)",
+      "conclusion": [
+        "SameLine(l,k)"
+      ],
+      "proving": {}
+    },
+    "DcheckSameLine_2(A,B,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "Ueq(Sub(A.y,B.y))",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(A,m)&PointOnLine(B,m)",
+      "conclusion": [
+        "SameLine(l,k)"
+      ],
+      "proving": {}
+    },
+    "DcheckSameCircle(O,Q,A,B,C)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Circle(Q)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)"
+      ],
+      "ac_check": "G(Add(Pow(Sub(A.x,B.x),2),Pow(Sub(A.y,B.y),2)))&G(Add(Pow(Sub(A.x,C.x),2),Pow(Sub(A.y,C.y),2)))&G(Add(Pow(Sub(B.x,C.x),2),Pow(Sub(B.y,C.y),2)))",
+      "premise": "PointOnCircle(A,O)&PointOnCircle(B,O)&PointOnCircle(C,O)&PointOnCircle(A,Q)&PointOnCircle(B,Q)&PointOnCircle(C,Q)",
+      "conclusion": [
+        "SameCircle(O,Q)"
+      ],
+      "proving": {}
+    },
+    "DcheckLineTangentToCircle(O,l,m,P,A)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Line(l)",
+        "Line(m)",
+        "Point(P)",
+        "Point(A)"
+      ],
+      "ac_check": "",
+      "premise": "LineTangentToCircle(l,O)&PointOnLine(A,l)&PointOnCircle(A,O)&PointIsCircleCenter(P,O)&PointOnLine(A,m)&PointOnLine(P,m)",
+      "conclusion": [
+        "Eq(Sub(Pl.dpl,O.rad))",
+        "LinesPerpendicular(l,m)"
+      ],
+      "proving": {}
+    },
+    "DcheckCircle(O,A,P)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Point(A)",
+        "Point(P)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnCircle(A,O)&PointIsCircleCenter(P,O)",
+      "conclusion": [
+        "Eq(Sub(AP.dpp,O.rad))"
+      ],
+      "proving": {}
+    },
+    "DcheckdppAnddpl(A,B,l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "LinesPerpendicular(l,m)&PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(B,m)",
+      "conclusion": [
+        "Eq(Sub(Am.dpl,AB.dpp))"
+      ],
+      "proving": {}
+    },
+    "DcheckdppAnddpc(A,P,O)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(P)",
+        "Circle(O)"
+      ],
+      "ac_check": "",
+      "premise": "PointIsCircleCenter(P,O)",
+      "conclusion": [
+        "Eq(Sub(AO.dpc,AP.dpp))"
+      ],
+      "proving": {}
+    },
+    "DcheckCirclesCongruent(O,Q)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Circle(Q)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(O.rad,Q.rad))",
+      "conclusion": [
+        "CirclesCongruent(O,Q)"
+      ],
+      "proving": {}
+    },
+    "DcheckCirclesExternallyTangent(O,Q,A,B)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Circle(Q)",
+        "Point(A)",
+        "Point(B)"
+      ],
+      "ac_check": "",
+      "premise": "CirclesExternallyTangent(O,Q)&PointIsCircleCenter(A,O)&PointIsCircleCenter(B,Q)",
+      "conclusion": [
+        "Eq(Sub(AB.dpp,Add(O.rad,Q.rad)))"
+      ],
+      "proving": {}
+    },
+    "DcheckCirclesInternallyTangent(O,Q,A,B)": {
+      "type": "basic",
+      "ee_check": [
+        "Circle(O)",
+        "Circle(Q)",
+        "Point(A)",
+        "Point(B)"
+      ],
+      "ac_check": "",
+      "premise": "CirclesInternallyTangent(O,Q)&PointIsCircleCenter(A,O)&PointIsCircleCenter(B,Q)",
+      "conclusion": [
+        "Eq(Sub(AB.dpp,Abs(Sub(O.rad,Q.rad))))"
+      ],
+      "proving": {}
+    },
+    "A1(A,B)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(AB.dpp,0))",
+      "conclusion": [
+        "SamePoint(A,B)"
+      ],
+      "proving": {}
+    },
+    "A2(A,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(Al.dpl,0))",
+      "conclusion": [
+        "PointOnLine(A,l)"
+      ],
+      "proving": {}
+    },
+    "A3(A,O)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Circle(O)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(AO.dpc,0))",
+      "conclusion": [
+        "PointIsCircleCenter(A,O)"
+      ],
+      "proving": {}
+    },
+    "A4(A,O)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Circle(O)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(AO.dpc,O.rad))",
+      "conclusion": [
+        "PointOnCircle(A,O)"
+      ],
+      "proving": {}
+    },
+    "A5(l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(lm.ma,0))",
+      "conclusion": [
+        "LinesParallel(l,m)"
+      ],
+      "proving": {}
+    },
+    "A6(l,m)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(l)",
+        "Line(m)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(lm.ma,90))",
+      "conclusion": [
+        "LinesPerpendicular(l,m)"
+      ],
+      "proving": {}
+    },
+    "A7(A,B,C,D)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Point(D)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(AB.dpp,CD.dpp))",
+      "conclusion": [
+        "SegmentEqualSegment(A,B,C,D)"
+      ],
+      "proving": {}
+    },
+    "A8(a,b,c,d)": {
+      "type": "basic",
+      "ee_check": [
+        "Line(a)",
+        "Line(b)",
+        "Line(c)",
+        "Line(d)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(ab.ma,cd.ma))",
+      "conclusion": [
+        "AngleEqualAngle(a,b,c,d)"
+      ],
+      "proving": {}
+    },
+    "A9(A,B,O)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Circle(O)"
+      ],
+      "ac_check": "",
+      "premise": "Eq(Sub(AB.dpp,O.rad))",
+      "conclusion": [
+        "SegmentEqualCircleRadius(A,B,O)"
+      ],
+      "proving": {}
+    },
+    "A10(A,B,C,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&Eq(Sub(Add(AC.dpp,BC.dpp),AB.dpp))",
+      "conclusion": [
+        "PointOnLine(C,l)"
+      ],
+      "proving": {}
+    },
+    "A11(A,B,C,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&Eq(Sub(Add(AB.dpp,BC.dpp),AC.dpp))",
+      "conclusion": [
+        "PointOnLine(C,l)"
+      ],
+      "proving": {}
+    },
+    "A12(A,B,C,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(l)"
+      ],
+      "ac_check": "",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&Eq(Sub(Add(AB.dpp,AC.dpp),CB.dpp))",
+      "conclusion": [
+        "PointOnLine(C,l)"
+      ],
+      "proving": {}
+    },
+    "A13(A,B,C,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(l)"
+      ],
+      "ac_check": "L(Mul(Sub(A.x,C.x),Sub(B.x,C.x)))",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(C,l)",
+      "conclusion": [
+        "Eq(Sub(Add(AC.dpp,BC.dpp),AB.dpp))"
+      ],
+      "proving": {}
+    },
+    "A14(A,B,C,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(l)"
+      ],
+      "ac_check": "L(Mul(Sub(A.x,B.x),Sub(C.x,B.x)))",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(C,l)",
+      "conclusion": [
+        "Eq(Sub(Add(AB.dpp,BC.dpp),AC.dpp))"
+      ],
+      "proving": {}
+    },
+    "A15(A,B,C,l)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(l)"
+      ],
+      "ac_check": "L(Mul(Sub(C.x,A.x),Sub(B.x,A.x)))",
+      "premise": "PointOnLine(A,l)&PointOnLine(B,l)&PointOnLine(C,l)",
+      "conclusion": [
+        "Eq(Sub(Add(AB.dpp,AC.dpp),CB.dpp))"
+      ],
+      "proving": {}
+    },
+    "A16(P,A,B,C,l,m,n)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(P)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)",
+        "Line(l)",
+        "Line(m)",
+        "Line(n)"
+      ],
+      "ac_check": "G(Sub(Mul(Sub(C.x,P.x),Sub(B.y,P.y)),Mul(Sub(C.y,P.y),Sub(B.x,P.x))))&G(Sub(Mul(Sub(P.x,A.x),Sub(B.y,A.y)),Mul(Sub(P.y,A.y),Sub(B.x,A.x))))",
+      "premise": "PointOnLine(P,l)&PointOnLine(A,l)&PointOnLine(P,m)&PointOnLine(B,m)&PointOnLine(P,n)&PointOnLine(C,n)",
+      "conclusion": [
+        "Eq(Sub(Add(lm.ma,mn.ma),ln.ma))",
+        "Eq(Sub(Add(nl.ma,lm.ma),nm.ma))",
+        "Eq(Sub(Add(mn.ma,nl.ma),ml.ma))"
+      ],
+      "proving": {}
+    },
+    "A18(A,B)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(A)",
+        "Point(B)"
+      ],
+      "ac_check": "",
+      "premise": "",
+      "conclusion": [
+        "Eq(Sub(AB.dpp,BA.dpp))"
+      ],
+      "proving": {}
+    }
+  }
+}
