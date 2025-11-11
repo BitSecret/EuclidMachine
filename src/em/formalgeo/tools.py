@@ -1,4 +1,4 @@
-from sympy import *
+from sympy import sympify, symbols, sqrt, atan, pi
 import string
 import random
 import json
@@ -331,7 +331,11 @@ def parse_algebra(algebra_constraint):
                 if p == "(":
                     break
                 if type(p) is str:
-                    p = symbols(p)
+                    if '.' in p:
+                        p = symbols(p)
+                    else:
+                        p = sympify(p)
+
                 paras.append(p)
             paras = paras[::-1]
 

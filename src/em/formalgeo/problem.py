@@ -656,17 +656,11 @@ class Problem:
             self.operations.append(theorem)
             self.groups[operation_id] = []
 
-            # add geometric conclusion
-            for predicate, instance in theorem_gdl['geometric_conclusion']:
-                instance = tuple(replace_paras(instance, replace))
-                entity_ids = tuple(self._get_entity_ids(predicate, instance))
-                add_new_fact = self._add(predicate, instance, premise_ids, entity_ids, operation_id) or add_new_fact
-
-            # add algebraic conclusion
-            for expr in theorem_gdl['algebraic_conclusion']:
-                expr = tuple(replace_expr(expr, replace))
-                entity_ids = tuple(self._get_entity_ids('Equation', expr))
-                add_new_fact = self._add('Equation', expr, premise_ids, entity_ids, operation_id) or add_new_fact
+            # add conclusions
+            add_new_fact = self._add_geometric_conclusions(  # add geometric conclusions
+                theorem_gdl, replace, premise_ids, operation_id) or add_new_fact
+            add_new_fact = self._add_algebraic_conclusions(  # add algebraic conclusion
+                theorem_gdl, replace, premise_ids, operation_id) or add_new_fact
         else:  # parameter-free form
             theorem_name = theorem
             theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
@@ -677,21 +671,35 @@ class Problem:
                 gpl.append((theorem_gdl['ee_check'][i], [theorem_gdl['paras'][i]]))
 
             # run geometric predicate logic
-            results = self._run_gpl(gpl, theorem_gdl['paras'])
+            results = self._run_gpl(gpl, theorem_gdl)
 
             # ac check
             checked_results = []
-            for _, instance in results:
-                pass
+            for premise_ids, replace in results:
+                if self._pass_ac_check(theorem_gdl, replace):
+                    checked_results.append((premise_ids, replace))
             results = checked_results
 
             # check algebraic premise
             checked_results = []
-            for _, instance in results:
-                pass
+            for premise_ids, replace in results:
+                passed, algebraic_premise_ids = self._pass_algebraic_premise(theorem_gdl, replace)
+                if passed:
+                    checked_results.append((premise_ids + algebraic_premise_ids, replace))
             results = checked_results
 
-            # 添加到结论
+            # add conclusions
+            for premise_ids, replace in results:
+                theorem_paras = replace_paras(theorem_gdl['paras'], replace)  # add theorem to self.operations
+                operation = theorem_name + '(' + ','.join(theorem_paras) + ')'
+                operation_id = len(self.operations)
+                self.operations.append(operation)
+                self.groups[operation_id] = []
+
+                add_new_fact = self._add_geometric_conclusions(  # add geometric conclusions
+                    theorem_gdl, replace, tuple(premise_ids), operation_id) or add_new_fact
+                add_new_fact = self._add_algebraic_conclusions(  # add algebraic conclusion
+                    theorem_gdl, replace, tuple(premise_ids), operation_id) or add_new_fact
 
         return add_new_fact
 
@@ -731,6 +739,22 @@ class Problem:
             return False, None
         return True, premise_ids
 
-    def _run_gpl(self, gpl, paras):
-        result = []  # ([premise_ids], instance)
-        return result
+    def _run_gpl(self, gpl, theorem_gdl):
+        results = []  # ([premise_ids], replace)
+        return results
+
+    def _add_geometric_conclusions(self, theorem_gdl, replace, premise_ids, operation_id):
+        add_new_fact = False
+        for predicate, instance in theorem_gdl['geometric_conclusion']:
+            instance = tuple(replace_paras(instance, replace))
+            entity_ids = tuple(self._get_entity_ids(predicate, instance))
+            add_new_fact = self._add(predicate, instance, premise_ids, entity_ids, operation_id) or add_new_fact
+        return add_new_fact
+
+    def _add_algebraic_conclusions(self, theorem_gdl, replace, premise_ids, operation_id):
+        add_new_fact = False
+        for expr in theorem_gdl['algebraic_conclusion']:
+            expr = tuple(replace_expr(expr, replace))
+            entity_ids = tuple(self._get_entity_ids('Equation', expr))
+            add_new_fact = self._add('Equation', expr, premise_ids, entity_ids, operation_id) or add_new_fact
+        return add_new_fact
