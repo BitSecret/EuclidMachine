@@ -1,4 +1,4 @@
-from sympy import sympify, symbols, sqrt, atan, pi
+from sympy import sympify, symbols, sqrt, atan, pi, acos
 import json
 
 _lu = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
@@ -359,12 +359,16 @@ def parse_algebra(algebra_constraint):
                 result = paras[0] / paras[1]
             elif operation == 'Pow':
                 result = paras[0] ** paras[1]
+            elif operation == 'Abs':
+                result = sqrt(paras[0] ** 2)
             elif operation == 'DPP':  # DPP(x1,y1,x2,y2)
                 result = sqrt((paras[2] - paras[0]) ** 2 + (paras[3] - paras[1]) ** 2)
             elif operation == 'DPL':  # DPL(x,y,k,b)
                 result = (paras[2] * paras[0] - paras[1] + paras[3]) / sqrt(paras[2] ** 2 + 1)
             elif operation == 'MA':  # MA(k1,k2)
                 result = (atan(paras[0]) - atan(paras[1])) * 180 / pi
+            elif operation == 'MAM':  # MAM(k1,k2)
+                result = ((atan(paras[0]) - atan(paras[1])) * 180 / pi + 180) % 180
             elif operation == 'PP':  # PP(x,y,cx,cy,r)
                 result = (paras[2] - paras[0]) ** 2 + (paras[3] - paras[1]) ** 2 - paras[4] ** 2
             else:
@@ -399,3 +403,11 @@ def replace_expr(expr, replace):
         expr = expr.replace(sym_temp, replace_temp[sym_temp])
 
     return expr
+
+
+def parse_disjunctive(general_form):   # 过几天在搞
+    """
+    :param general_form: [general_form]
+    :return: norm_form: [[conjunctive_clauses]]
+    """
+    pass

@@ -2,10 +2,12 @@ from em.formalgeo.tools import letters_p, letters_l, letters_c
 from em.formalgeo.tools import parse_predicate, parse_algebra, replace_paras, replace_expr
 from sympy import symbols, nonlinsolve, tan, pi, nsimplify, sqrt
 import random
+import matplotlib
+import matplotlib.pyplot as plt
 
-# matplotlib.use('TkAgg')  # 解决后端兼容性问题
-# plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 使用微软雅黑
-# plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+matplotlib.use('TkAgg')  # 解决后端兼容性问题
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 使用微软雅黑
+plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 
 def _get_sym_from_entities(entities):
@@ -29,7 +31,7 @@ def _get_dependent_entities(predicate, instance, parsed_gdl):
     if predicate == 'Equation':
         for sym in instance.free_symbols:
             entities, sym = str(sym).split('.')
-            measure = parsed_gdl['Measure'][parsed_gdl['sym_to_measure'][sym]]
+            measure = parsed_gdl['Measures'][parsed_gdl['sym_to_measure'][sym]]
             for predicate, instance in zip(measure['ee_check'], list(entities)):
                 dependent_entities.append((predicate, instance))
     else:
@@ -38,7 +40,7 @@ def _get_dependent_entities(predicate, instance, parsed_gdl):
     return list(set(dependent_entities))
 
 
-def _satisfy_constraints(sym_to_value, constraints):
+def _satisfy_inequalities(sym_to_value, constraints):
     """Satisfy Inequalities"""
     for g in constraints['G']:
         if g.subs(sym_to_value).evalf(chop=True) <= 0:
@@ -62,7 +64,7 @@ def _get_free_symbols(constraint_value):
     free_symbols = set()
     for item in constraint_value:
         free_symbols = free_symbols | item.free_symbols
-    return list(free_symbols)
+    return sorted(list(free_symbols), key=str)  # set 默认乱序，如果不排序，会导致每次运行的sym顺序不一样，导致随机取值有差异
 
 
 class Configuration:
@@ -175,69 +177,94 @@ class Configuration:
         self.facts = []  # fact_id -> (predicate, instance, premise_ids, entity_ids, operation_id)
         self.id = {}  # (predicate, instance) -> fact_id
         self.groups = []  # operation_id -> [fact_id]
-        self.ids_of_predicate = {'Point': [], 'Line': [], 'Circle': [], 'Equation': []}  # predicate -> [fact_id]
-        self.instances_of_predicate = {'Point': [], 'Line': [], 'Circle': [], 'Equation': []}  # predicate -> [instance]
-        for relation in self.parsed_gdl['relations']:
+        self.ids_of_predicate = {'Point': [], 'Line': [], 'Circle': []}  # predicate -> [fact_id]
+        self.instances_of_predicate = {'Point': [], 'Line': [], 'Circle': []}  # predicate -> [instance]
+        for relation in self.parsed_gdl['Relations']:
             self.ids_of_predicate[relation] = []
             self.instances_of_predicate[relation] = []
+        self.ids_of_predicate['Equation'] = []
+        self.instances_of_predicate['Equation'] = []
         self.operations = []  # operation_id -> operation
 
-        self.constructions = []  # operation_id -> (t_entity, i_entities, d_entities, constraints, solved_values)
+        self.value_of_para_sym = {}  # sym -> value
+        self.constructions = {}  # operation_id -> (t_entity, i_entities, d_entities, constraints, solved_values)
 
-        self.value_of_sym = {}  # sym -> value
-        self.equations = []  # [[simplified_equation, original_equation_fact_id, dependent_equation_fact_ids]]
-        self.sym_to_equations = {}  # sym -> [equation_id]
+        self.value_of_attr_sym = {}  # sym -> value
+        self.equations = []  # equation_id -> [[simplified_equation, fact_id, dependent_equation_fact_ids]]
+        self.attr_sym_to_equations = {}  # sym -> [equation_id]
 
     def _has(self, predicate, instance):
         return instance in self.instances_of_predicate[predicate]
 
     def _add(self, predicate, instance, premise_ids, entity_ids, operation_id):
+        if predicate == 'Equation' and str(instance)[0] == '-':
+            instance = - instance
+
         if self._has(predicate, instance):
             return False
 
         fact_id = len(self.facts)
-        self.facts.append((predicate, instance, tuple(set(premise_ids)), tuple(set(entity_ids)), operation_id))
+        premise_ids = tuple(sorted(list(set(premise_ids))))
+        entity_ids = tuple(sorted(list(set(entity_ids))))
+        self.facts.append((predicate, instance, premise_ids, entity_ids, operation_id))
         self.id[(predicate, instance)] = fact_id
         self.groups[operation_id].append(fact_id)
         self.ids_of_predicate[predicate].append(fact_id)
         self.instances_of_predicate[predicate].append(instance)
 
         if predicate == 'Equation':
-            if self.operations[operation_id] != 'solve_eq':
-                sym_to_value = {}
-                dependent_equation_fact_ids = []
-                for sym in instance.free_symbols:
-                    if sym in self.value_of_sym:
-                        sym_to_value[sym] = self.value_of_sym[sym]
-                        dependent_equation_fact_ids.append(self.id[('Equation', sym - self.value_of_sym[sym])])
-                free_symbols = instance.free_symbols - set(sym_to_value)
+            if self.operations[operation_id] == 'solve_eq':
+                return True
 
-                if len(free_symbols) > 0:
-                    instance = instance.subs(sym_to_value)
-                    equation_id = len(self.equations)
-                    self.equations.append([instance, fact_id, dependent_equation_fact_ids])
-                    for sym in free_symbols:
-                        if sym not in self.sym_to_equations:
-                            self.sym_to_equations[sym] = [equation_id]
-                        else:
-                            self.sym_to_equations[sym].append(equation_id)
+            sym_to_value = {}
+            dependent_equation_fact_ids = []
+            for sym in instance.free_symbols:
+                if sym not in self.value_of_attr_sym:
+                    continue
+                sym_to_value[sym] = self.value_of_attr_sym[sym]
+                dependent_equation_fact_ids.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
+            free_symbols = instance.free_symbols - set(sym_to_value)
+
+            if len(free_symbols) == 0:
+                return True
+
+            instance = instance.subs(sym_to_value)
+            equation_id = len(self.equations)
+            self.equations.append([instance, fact_id, dependent_equation_fact_ids])
+
+            for sym in free_symbols:
+                if sym not in self.attr_sym_to_equations:
+                    self.attr_sym_to_equations[sym] = [equation_id]
+                else:
+                    self.attr_sym_to_equations[sym].append(equation_id)
+            return True
+        elif predicate in ['Point', 'Line', 'Circle']:
             return True
 
         replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
 
-        operation_id = len(self.operations)
-        self.operations.append('auto_extend')
-        self.groups[operation_id] = []
-
+        operation_id = self._add_operation('auto_extend')
+        added = False
         for predicate, instance in self.parsed_gdl['Relations'][predicate]['extend']:
             if predicate == 'Equation':
                 instance = replace_expr(instance, replace)
             else:
                 instance = tuple(replace_paras(instance, replace))
             entity_ids = tuple(self._get_entity_ids(predicate, instance))
-            self._add(predicate, instance, (fact_id,), entity_ids, operation_id)
+            added = self._add(predicate, instance, (fact_id,), entity_ids, operation_id) or added
+        if not added:
+            self._del_operation()
 
         return True
+
+    def _add_operation(self, operation):
+        operation_id = len(self.operations)
+        self.operations.append(operation)
+        self.groups.append([])
+        return operation_id
+
+    def _del_operation(self):
+        self.operations.pop()
 
     def construct(self, entity):
         """Construct a new point, line, or circle.
@@ -276,6 +303,9 @@ class Configuration:
                    'Line': list(self.letters['Line']),
                    'Circle': list(self.letters['Circle'])}  # available letters
 
+        # add entity to self.operations
+        operation_id = self._add_operation(entity)
+
         t_entity, i_entities, d_entities, parsed_constraints, added_facts = self._parse_entity(entity, letters)
         i_entities, constraints = self._merge_constraints(i_entities, parsed_constraints, letters)
         solved_values = self._solve_constraints(t_entity, i_entities, d_entities, constraints)
@@ -284,34 +314,28 @@ class Configuration:
         if len(solved_values) == 0:  # No solved entity
             return False
 
-        # add entity to self.operations
-        operation_id = len(self.operations)
-        self.operations.append(entity)
-        self.groups[operation_id] = []
-
         premise_ids = []
-        for predicate in d_entities:
-            for instance in d_entities[predicate]:
-                premise_ids.append(self.id[(predicate, (instance,))])
+        for predicate, instance in d_entities:
+            premise_ids.append(self.id[(predicate, instance)])
         premise_ids = tuple(premise_ids)
 
         # add target_entities to self.facts
-        self._add(t_entity[0], (t_entity[1],), premise_ids, premise_ids, operation_id)
+        self._add(t_entity[0], t_entity[1], premise_ids, premise_ids, operation_id)
 
         # set entity's parameter to solved value
         solved_value = solved_values.pop(0)
         syms = _get_sym_from_entities([t_entity])
-        for i in range(len(solved_values)):
-            self.value_of_sym[syms[i]] = solved_value[i]
+        for i in range(len(solved_value)):
+            self.value_of_para_sym[syms[i]] = float(solved_value[i])
         if t_entity[0] == 'Point':
-            if self.value_of_sym[syms[0]] > self.range['x_max']:
-                self.range['x_max'] = self.value_of_sym[syms[0]]
-            if self.value_of_sym[syms[0]] < self.range['x_min']:
-                self.range['x_min'] = self.value_of_sym[syms[0]]
-            if self.value_of_sym[syms[1]] > self.range['y_max']:
-                self.range['y_max'] = self.value_of_sym[syms[1]]
-            if self.value_of_sym[syms[1]] < self.range['y_min']:
-                self.range['y_min'] = self.value_of_sym[syms[1]]
+            if self.value_of_para_sym[syms[0]] > self.range['x_max']:
+                self.range['x_max'] = self.value_of_para_sym[syms[0]]
+            if self.value_of_para_sym[syms[0]] < self.range['x_min']:
+                self.range['x_min'] = self.value_of_para_sym[syms[0]]
+            if self.value_of_para_sym[syms[1]] > self.range['y_max']:
+                self.range['y_max'] = self.value_of_para_sym[syms[1]]
+            if self.value_of_para_sym[syms[1]] < self.range['y_min']:
+                self.range['y_min'] = self.value_of_para_sym[syms[1]]
 
         # add relation to self.facts
         for predicate, instance in added_facts:
@@ -319,7 +343,7 @@ class Configuration:
             self._add(predicate, instance, premise_ids, entity_ids, operation_id)
 
         # add (t_entity, i_entities, d_entities, constraints, solved_values) to self.constructions
-        self.constructions.append((t_entity, i_entities, d_entities, constraints, tuple(solved_values)))
+        self.constructions[operation_id] = (t_entity, i_entities, d_entities, constraints, tuple(solved_values))
 
         # update self.letters
         self.letters[t_entity[0]].remove(t_entity[1])
@@ -328,7 +352,7 @@ class Configuration:
 
     def _parse_entity(self, entity, letters):
         target_entity, constraints = entity.split(':')
-        predicate, paras = parse_predicate(entity)
+        predicate, paras = parse_predicate(target_entity)
         target_entity = (predicate, paras[0])
         implicit_entities = []
         dependent_entities = []
@@ -551,7 +575,7 @@ class Configuration:
 
         sym_to_value = {}  # replace dependent entity's parameter
         for sym in _get_sym_from_entities(dependent_entities):
-            sym_to_value[sym] = self.value_of_sym[sym]
+            sym_to_value[sym] = self.value_of_para_sym[sym]
         replaced_constraints = {'Eq': [], 'G': [], 'Geq': [], 'L': [], 'Leq': [], 'Ueq': []}
         for constraint_type in constraints:
             for constraint in constraints[constraint_type]:
@@ -562,7 +586,8 @@ class Configuration:
         else:
             for solved_value in list(nonlinsolve(replaced_constraints['Eq'], target_syms + implicit_syms)):
                 if len(_get_free_symbols(solved_value)) == 0:
-                    if _satisfy_constraints(solved_value, replaced_constraints):
+                    if _satisfy_inequalities(dict(zip(target_syms + implicit_syms, solved_value)),
+                                             replaced_constraints):
                         solved_values.append(tuple(list(solved_value)[0:len(target_syms)]))
                 else:
                     constraint_values.append(solved_value)
@@ -570,13 +595,18 @@ class Configuration:
         if len(constraint_values) == 0:
             return solved_values
 
+        # print(constraint_values)
+
         epoch = 0
         while len(solved_values) < self.max_samples and epoch < self.max_epoch:
             constraint_value = constraint_values[epoch % len(constraint_values)]
             solved_value = self._random_value(target_syms + implicit_syms, constraint_value)
-            if _satisfy_constraints(solved_value, replaced_constraints):
+            sym_to_value = dict(zip(target_syms + implicit_syms, solved_value))
+            if _satisfy_inequalities(sym_to_value, replaced_constraints):
                 solved_values.append(tuple(list(solved_value)[0:len(target_syms)]))
             epoch += 1
+        # print(solved_values)
+        # print()
 
         return solved_values
 
@@ -597,27 +627,34 @@ class Configuration:
 
         for sym in unsolved_syms:
             if str(sym).split('.')[1] in ['x', 'cx']:
-                random_x = random.uniform(float(self.range['x_max'] * self.rate),
-                                          float(self.range['x_min'] * self.rate))
+                middle_x = (self.range['x_max'] + self.range['x_min']) / 2
+                range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
+                random_x = random.uniform(float(middle_x - range_x), float(middle_x + range_x))
                 random_x = nsimplify(random_x, tolerance=self.tolerance)
                 random_values[sym] = random_x
             elif str(sym).split('.')[1] in ['y', 'cy']:
-                random_y = random.uniform(float(self.range['y_max'] * self.rate),
-                                          float(self.range['y_min'] * self.rate))
+                middle_y = (self.range['y_max'] + self.range['y_min']) / 2
+                range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
+                random_y = random.uniform(float(middle_y - range_y), float(middle_y + range_y))
                 random_y = nsimplify(random_y, tolerance=self.tolerance)
                 random_values[sym] = random_y
             elif str(sym).split('.')[1] == 'r':
                 max_distance = float(sqrt((self.range['y_max'] - self.range['y_min']) ** 2 +
-                                          (self.range['x_max'] - self.range['x_min']) ** 2))
+                                          (self.range['x_max'] - self.range['x_min']) ** 2)) / 2 * self.rate
                 random_r = random.uniform(0, max_distance)
                 random_r = nsimplify(random_r, tolerance=self.tolerance)
                 random_values[sym] = random_r
             elif str(sym).split('.')[1] == 'b':
+                middle_x = (self.range['x_max'] + self.range['x_min']) / 2
+                range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
+                middle_y = (self.range['y_max'] + self.range['y_min']) / 2
+                range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
+
                 k_value = random_values[symbols(str(sym).split('.')[0] + '.k')]
-                b_range = [float(self.range['y_max'] * self.rate - k_value * self.range['x_min'] * self.rate),
-                           float(self.range['y_min'] * self.rate - k_value * self.range['x_min'] * self.rate),
-                           float(self.range['y_max'] * self.rate - k_value * self.range['x_max'] * self.rate),
-                           float(self.range['y_min'] * self.rate - k_value * self.range['x_max'] * self.rate)]
+                b_range = [float(middle_y + range_y - k_value * (middle_x - range_x)),
+                           float(middle_y - range_y - k_value * (middle_x - range_x)),
+                           float(middle_y + range_y - k_value * (middle_x + range_x)),
+                           float(middle_y - range_y - k_value * (middle_x + range_x))]
                 random_b = random.uniform(min(b_range), max(b_range))
                 random_b = nsimplify(random_b, tolerance=self.tolerance)
                 random_values[sym] = random_b
@@ -631,7 +668,7 @@ class Configuration:
     def _get_entity_ids(self, predicate, instance):
         entity_ids = []
         for d_predicate, d_instance in _get_dependent_entities(predicate, instance, self.parsed_gdl):
-            entity_ids.append(self.id[(d_predicate, (d_instance,))])
+            entity_ids.append(self.id[(d_predicate, d_instance)])
         return entity_ids
 
     def apply(self, theorem):
@@ -648,7 +685,7 @@ class Configuration:
         Returns:
             result (bool): If applying the theorem adds new conditions, return True; otherwise, return False.
         """
-        add_new_fact = False
+        added = False
 
         if '(' in theorem:  # parameterized form
             theorem_name, theorem_paras = parse_predicate(theorem)
@@ -678,15 +715,11 @@ class Configuration:
             premise_ids += algebraic_premise_ids
 
             # add theorem to self.operations
-            operation_id = len(self.operations)
-            self.operations.append(theorem)
-            self.groups[operation_id] = []
+            operation_id = self._add_operation(theorem)
 
             # add conclusions
-            add_new_fact = self._add_geometric_conclusions(  # add geometric conclusions
-                theorem_gdl, replace, premise_ids, operation_id) or add_new_fact
-            add_new_fact = self._add_algebraic_conclusions(  # add algebraic conclusion
-                theorem_gdl, replace, premise_ids, operation_id) or add_new_fact
+            added = self._add_geometric_conclusions(theorem_gdl, replace, premise_ids, operation_id) or added
+            added = self._add_algebraic_conclusions(theorem_gdl, replace, premise_ids, operation_id) or added
         else:  # parameter-free form
             theorem_name = theorem
             theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
@@ -700,6 +733,7 @@ class Configuration:
                 if self._pass_ac_check(theorem_gdl, replace):
                     checked_results.append((premise_ids, replace))
             results = checked_results
+            # print(results)
 
             # check algebraic premise
             checked_results = []
@@ -708,21 +742,18 @@ class Configuration:
                 if passed:
                     checked_results.append((premise_ids + algebraic_premise_ids, replace))
             results = checked_results
+            # print(results)
 
             # add conclusions
             for premise_ids, replace in results:
                 theorem_paras = replace_paras(theorem_gdl['paras'], replace)  # add theorem to self.operations
-                operation = theorem_name + '(' + ','.join(theorem_paras) + ')'
-                operation_id = len(self.operations)
-                self.operations.append(operation)
-                self.groups[operation_id] = []
 
-                add_new_fact = self._add_geometric_conclusions(  # add geometric conclusions
-                    theorem_gdl, replace, tuple(premise_ids), operation_id) or add_new_fact
-                add_new_fact = self._add_algebraic_conclusions(  # add algebraic conclusion
-                    theorem_gdl, replace, tuple(premise_ids), operation_id) or add_new_fact
+                operation_id = self._add_operation(theorem_name + '(' + ','.join(theorem_paras) + ')')
+                # add conclusions
+                added = self._add_geometric_conclusions(theorem_gdl, replace, tuple(premise_ids), operation_id) or added
+                added = self._add_algebraic_conclusions(theorem_gdl, replace, tuple(premise_ids), operation_id) or added
 
-        return add_new_fact
+        return added
 
     def _pass_ee_check(self, theorem_gdl, replace):
         premise_ids = []
@@ -739,7 +770,7 @@ class Configuration:
         for algebraic_type in theorem_gdl['ac_check']:
             for constraint in theorem_gdl['ac_check'][algebraic_type]:
                 constraints[algebraic_type].append(replace_expr(constraint, replace))
-        return _satisfy_constraints(self.value_of_sym, constraints)
+        return _satisfy_inequalities(self.value_of_para_sym, constraints)
 
     def _pass_geometric_premise(self, theorem_gdl, replace):
         premise_ids = []
@@ -758,16 +789,13 @@ class Configuration:
             syms, equations, c_premise_ids = self._get_minimum_dependent_equations(constraint)
             solved_value = list(nonlinsolve(equations, syms))[0]
 
-            operation_id = len(self.operations)  # add the solved values of symbols
-            self.operations.append('solve_eq')
-            self.groups[operation_id] = []
+            operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
             added = False
             for i in range(1, len(solved_value)):
                 if len(solved_value[i].free_symbols) == 0:
-                    added = self._set_value_of_sym(syms[i], solved_value[i], c_premise_ids, operation_id) or added
-            if not added:  # undo the add operation
-                self.operations.pop()
-                self.groups.pop(operation_id)
+                    added = self._set_value_of_attr_sym(syms[i], solved_value[i], c_premise_ids, operation_id) or added
+            if not added:
+                self._del_operation()
 
             if solved_value[0] != 0:
                 return False, None
@@ -776,18 +804,18 @@ class Configuration:
 
         return True, premise_ids
 
-    def _set_value_of_sym(self, sym, value, premise_ids, operation_id):
-        if sym in self.value_of_sym:
+    def _set_value_of_attr_sym(self, sym, value, premise_ids, operation_id):
+        if sym in self.value_of_attr_sym:
             return False
 
-        self.value_of_sym[sym] = value
+        self.value_of_attr_sym[sym] = value
         entity_ids = self._get_entity_ids('Equation', sym - value)
         added = self._add('Equation', sym - value, premise_ids, entity_ids, operation_id)
 
-        for equation_id in self.sym_to_equations[sym]:
+        for equation_id in self.attr_sym_to_equations[sym]:
             self.equations[equation_id][0] = self.equations[equation_id][0].subs({sym: value})
             self.equations[equation_id][2].append(self.id[('Equation', sym - value)])
-        self.sym_to_equations.pop(sym)
+        self.attr_sym_to_equations.pop(sym)
 
         return added
 
@@ -796,20 +824,21 @@ class Configuration:
         equations = []
         premise_ids = []
 
-        for sym in target_expr.free_symbols:
-            if sym not in self.value_of_sym:
+        # set 默认乱序，如果不排序，会导致每次运行的sym顺序不一样，导致随机取值有差异
+        for sym in sorted(list(target_expr.free_symbols), key=str):
+            if sym not in self.value_of_attr_sym:
                 syms.append(sym)
             else:
-                premise_ids.append(self.id[('Equation', sym - self.value_of_sym[sym])])
-                target_expr = target_expr.subs({sym: self.value_of_sym[sym]})
+                premise_ids.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
+                target_expr = target_expr.subs({sym: self.value_of_attr_sym[sym]})
         equations.append(syms[0] - target_expr)
 
         i = 1
         while i < len(syms):
-            if syms[i] not in self.sym_to_equations:
+            if syms[i] not in self.attr_sym_to_equations:
                 i += 1
                 continue
-            for equation_id in self.sym_to_equations[syms[i]]:
+            for equation_id in self.attr_sym_to_equations[syms[i]]:
                 if self.equations[equation_id][0] in equations:
                     continue
 
@@ -825,6 +854,7 @@ class Configuration:
 
     def _run_gpl(self, theorem_gdl):
         gpl = list(theorem_gdl['geometric_premise'])
+        # print(gpl)
         for i in range(len(theorem_gdl['paras'])):
             gpl.append((theorem_gdl['ee_check'][i], [theorem_gdl['paras'][i]]))
 
@@ -870,6 +900,7 @@ class Configuration:
         for i in range(len(a_instances)):
             replace = dict(zip(theorem_gdl['paras'], [a_instances[i][a_index] for a_index in order_adjustment]))
             results.append((a_premise_ids[i], replace))
+        # print(results)
 
         return results
 
@@ -884,38 +915,152 @@ class Configuration:
     def _add_algebraic_conclusions(self, theorem_gdl, replace, premise_ids, operation_id):
         add_new_fact = False
         for expr in theorem_gdl['algebraic_conclusion']:
-            expr = tuple(replace_expr(expr, replace))
+            expr = replace_expr(expr, replace)
+            if len(expr.free_symbols) == 0:
+                continue
             entity_ids = tuple(self._get_entity_ids('Equation', expr))
             add_new_fact = self._add('Equation', expr, premise_ids, entity_ids, operation_id) or add_new_fact
         return add_new_fact
 
-    def get_hypergraph(self, serialize=False):
+    def show(self):
+        used_operation_ids = set()
+
+        print('\033[33mEntities:\033[0m')
+        for entity in ['Point', 'Line', 'Circle']:
+            if len(self.ids_of_predicate[entity]) == 0:
+                continue
+            print(f'{entity}:')
+            for fact_id in self.ids_of_predicate[entity]:
+                used_operation_ids.add(self.facts[fact_id][4])
+                if entity == 'Point':
+                    values = [(round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.x')]), 4),
+                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.y')]), 4))]
+                elif entity == 'Line':
+                    values = [(round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.k')]), 4),
+                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.b')]), 4))]
+                else:
+                    values = [(round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.cx')]), 4),
+                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.cy')]), 4),
+                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.r')]), 4))]
+                print('{0:<6}{1:<15}{2:<40}{3:<40}{4:<6}{5:<30}'.format(
+                    fact_id,
+                    self.facts[fact_id][1],
+                    str(self.facts[fact_id][2]),
+                    str(self.facts[fact_id][3]),
+                    self.facts[fact_id][4],
+                    str(values)
+                ))
+        print()
+
+        print("\033[33mConstructions:\033[0m")
+        for operation_id in self.constructions:
+            print('{0:<4}{1:<40}'.format(operation_id, self.operations[operation_id]))
+            target_predicate, target_entity = self.constructions[operation_id][0]
+            print(f'    target entity: {target_predicate}({target_entity})')
+            implicit_entities = [f'{p}({i})' for p, i in self.constructions[operation_id][1]]
+            print(f'    implicit entities: {implicit_entities}')
+            dependent_entities = [f'{p}({i})' for p, i in self.constructions[operation_id][2]]
+            print(f'    dependent entities: {dependent_entities}')
+            print(f"    Eq: {str(self.constructions[operation_id][3]['Eq']).replace(' ', '').replace(',', ', ')}")
+            print(f"    G: {str(self.constructions[operation_id][3]['G']).replace(' ', '').replace(',', ', ')}")
+            print(f"    Geq: {str(self.constructions[operation_id][3]['Geq']).replace(' ', '').replace(',', ', ')}")
+            print(f"    L: {str(self.constructions[operation_id][3]['L']).replace(' ', '').replace(',', ', ')}")
+            print(f"    Leq: {str(self.constructions[operation_id][3]['Leq']).replace(' ', '').replace(',', ', ')}")
+            print(f"    Ueq: {str(self.constructions[operation_id][3]['Ueq']).replace(' ', '').replace(',', ', ')}")
+        print()
+
+        print("\033[33mRelations:\033[0m")
+        for predicate in self.ids_of_predicate:
+            if len(self.ids_of_predicate[predicate]) == 0:
+                continue
+            if predicate in ['Point', 'Line', 'Circle', 'Equation']:
+                continue
+            print(f"{predicate}:")
+            for fact_id in self.ids_of_predicate[predicate]:
+                used_operation_ids.add(self.facts[fact_id][4])
+                print("{0:<6}{1:<15}{2:<40}{3:<40}{4:<6}".format(
+                    fact_id,
+                    ','.join(self.facts[fact_id][1]),
+                    str(self.facts[fact_id][2]),
+                    str(self.facts[fact_id][3]),
+                    self.facts[fact_id][4]
+                ))
+        print()
+
+        print("\033[33mEquations:\033[0m")
+        for fact_id in self.ids_of_predicate['Equation']:
+            used_operation_ids.add(self.facts[fact_id][4])
+            print("{0:<6}{1:<15}{2:<40}{3:<40}{4:<6}".format(
+                fact_id,
+                str(self.facts[fact_id][1]).replace(' ', ''),
+                str(self.facts[fact_id][2]),
+                str(self.facts[fact_id][3]),
+                self.facts[fact_id][4]
+            ))
+        print()
+
+        print("\033[33mSymbols and Values:\033[0m")
+        for sym in self.value_of_attr_sym:
+            equation_id = self.id['Equation', sym - self.value_of_attr_sym[sym]]
+            predicate = self.parsed_gdl['sym_to_measure'][str(sym).split('.')[1]]
+            instance = ",".join(list(str(sym).split('.')[0]))
+            print("{0:<6}{1:<25}{2:<25}{3:<6}".format(
+                equation_id,
+                f"{predicate}({instance})",
+                str(sym),
+                str(self.value_of_attr_sym[sym])
+            ))
+        print()
+
+        print("\033[33mOperations:\033[0m")
+        for i in range(len(self.operations)):
+            if i not in used_operation_ids:
+                continue
+            print("{0:<6}{1:<50}".format(
+                i,
+                f'{self.operations[i]}'
+            ))
+        print()
+
+    def get_hypergraph(self, serialize=False, filename=None):
         pass
 
-    def draw_figure(self, filename):
-        """Draw figure using matplotlib."""
-        # _, ax = plt.subplots()
-        # # plt.gca().set_aspect('equal', adjustable='box')  # maintain the circle's aspect ratio
-        # ax.axis('equal')
-        # ax.axis('off')  # hide the axes
-        # ax.set_xlim(*self.get_point_range(ratio=1.5)[x])
-        # ax.set_ylim(*self.get_point_range(ratio=1.5)[y])
-        #
-        # for line in self.lines.values():
-        #     ax.axline((0, line.b), slope=line.k, color='blue')
-        #
-        # for circle in self.circles.values():
-        #     ax.add_artist(plt.Circle((circle.center_x, circle.center_y), circle.r, color="green", fill=False))
-        #
-        # for point in self.points.values():
-        #     ax.plot(point.x, point.y, "o", color='red')
-        #     ax.text(point.x - 0.02, point.y, point.name, ha='center', va='bottom')
-        #
-        # plt.show()
-        pass
+    def get_figure(self, filename=None):
+        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # 点坐标的范围
+        _, ax = plt.subplots()
+        ax.axis('equal')  # maintain the circle's aspect ratio
+        ax.axis('off')  # hide the axes
+        middle_x = (self.range['x_max'] + self.range['x_min']) / 2
+        range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
+        middle_y = (self.range['y_max'] + self.range['y_min']) / 2
+        range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
+        # print(self.range)
+        # print(middle_x - range_x, middle_x + range_x)
+        # print(middle_y - range_y, middle_y + range_y)
+        ax.set_xlim(middle_x - range_x, middle_x + range_x)
+        ax.set_ylim(middle_y - range_y, middle_y + range_y)
 
-    def draw_hypergraph(self, filename):
-        pass
+        for line in self.instances_of_predicate['Line']:
+            k = float(self.value_of_para_sym[symbols(f'{line}.k')])
+            b = float(self.value_of_para_sym[symbols(f'{line}.b')])
+            ax.axline((0, b), slope=k, color='blue')
 
-    def find_possible_relations(self, problem):
+        for circle in self.instances_of_predicate['Circle']:
+            center_x = float(self.value_of_para_sym[symbols(f'{circle}.cx')])
+            center_y = float(self.value_of_para_sym[symbols(f'{circle}.cy')])
+            r = float(self.value_of_para_sym[symbols(f'{circle}.r')])
+            ax.add_artist(plt.Circle((center_x, center_y), r, color="green", fill=False))
+
+        for point in self.instances_of_predicate['Point']:
+            x = float(self.value_of_para_sym[symbols(f'{point}.x')])
+            y = float(self.value_of_para_sym[symbols(f'{point}.y')])
+            ax.plot(x, y, "o", color='red')
+            ax.text(x, y, point, ha='center', va='bottom')
+
+        if filename is None:
+            plt.show()
+        else:
+            plt.savefig(filename)
+
+    def find_possible_relations(self, filename=None):
         pass

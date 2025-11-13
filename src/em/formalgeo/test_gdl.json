@@ -104,35 +104,28 @@
     }
   },
   "Relations": {
-    "IncenterOfTriangle(O,A,B,C)": {
-      "type": "indirect",
+    "FreePoint(A)": {
+      "type": "basic",
       "ee_check": [
-        "Point(O)",
-        "Point(A)",
-        "Point(B)",
-        "Point(C)"
-      ],
-      "extend": [],
-      "implicit_entity": [
-        "Line(c):PointOnLine(A,c)&PointOnLine(B,c)",
-        "Line(a):PointOnLine(B,a)&PointOnLine(C,a)",
-        "Line(b):PointOnLine(C,b)&PointOnLine(A,b)",
-        "Line(x):EqualAngle(b,x,x,c)",
-        "Line(y):EqualAngle(c,y,y,a)"
-      ],
-      "constraints": "PointLeftSegment(C,A,B)&PointOnLine(O,x)&PointOnLine(O,y)"
-    },
-    "MidpointOfArc(M,O,A,B)": {
-      "type": "composite",
-      "ee_check": [
-        "Point(M)",
-        "Circle(O)",
-        "Point(A)",
-        "Point(B)"
+        "Point(A)"
       ],
       "extend": [],
       "implicit_entity": [],
-      "constraints": "PointOnCircle(M,O)&EqualDistance(M,A,M,B)&PointLeftSegment(M,B,A)"
+      "constraints": ""
+    },
+    "AngleBisector(O,l,a,b)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(O)",
+        "Line(l)",
+        "Line(a)",
+        "Line(b)"
+      ],
+      "extend": [
+        "EqualAngle(a,l,l,b)"
+      ],
+      "implicit_entity": [],
+      "constraints": "PointOnLine(O,l)&PointOnLine(O,a)&PointOnLine(O,b)&Eq(Sub(MA(a.k,l.k),MA(l.k,b.k)))"
     },
     "SamePoint(A,B)": {
       "type": "basic",
@@ -164,7 +157,7 @@
       ],
       "extend": [],
       "implicit_entity": [],
-      "constraints": "Eq(PP(A.x,A.y,O.a,O.b,O.r))"
+      "constraints": "Eq(PP(A.x,A.y,O.cx,O.cy,O.r))"
     },
     "PointLeftSegment(A,B,C)": {
       "type": "basic",
@@ -219,9 +212,86 @@
       ],
       "implicit_entity": [],
       "constraints": "Eq(Sub(l.k,k.k))"
+    },
+    "MidpointOfArc(M,O,A,B)": {
+      "type": "composite",
+      "ee_check": [
+        "Point(M)",
+        "Circle(O)",
+        "Point(A)",
+        "Point(B)"
+      ],
+      "extend": [],
+      "implicit_entity": [],
+      "constraints": "PointOnCircle(M,O)&EqualDistance(M,A,M,B)&PointLeftSegment(M,B,A)"
+    },
+    "IncenterOfTriangle(O,A,B,C)": {
+      "type": "indirect",
+      "ee_check": [
+        "Point(O)",
+        "Point(A)",
+        "Point(B)",
+        "Point(C)"
+      ],
+      "extend": [],
+      "implicit_entity": [
+        "Line(c):PointOnLine(A,c)&PointOnLine(B,c)",
+        "Line(a):PointOnLine(B,a)&PointOnLine(C,a)",
+        "Line(b):PointOnLine(C,b)&PointOnLine(A,b)",
+        "Line(x):EqualAngle(b,x,x,c)",
+        "Line(y):EqualAngle(c,y,y,a)"
+      ],
+      "constraints": "PointLeftSegment(C,A,B)&PointOnLine(O,x)&PointOnLine(O,y)"
     }
   },
   "Theorems": {
+    "angle_bisector_determination_angle_equal(O,l,a,b)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(O)",
+        "Line(l)",
+        "Line(a)",
+        "Line(b)"
+      ],
+      "ac_check": "Ueq(Sub(a.k,b.k))&Ueq(Sub(l.k,a.k))&Ueq(Sub(l.k,b.k))&G(Sub(MAM(a.k,b.k),MAM(a.k,l.k)))",
+      "premise": "PointOnLine(O,l)&PointOnLine(O,a)&PointOnLine(O,b)&Eq(Sub(al.ma,lb.ma))",
+      "conclusion": [
+        "AngleBisector(O,l,a,b)"
+      ],
+      "proving": {}
+    },
+    "angle_bisector_property_distance_equal(O,A,l,a,b)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(O)",
+        "Point(A)",
+        "Line(l)",
+        "Line(a)",
+        "Line(b)"
+      ],
+      "ac_check": "Ueq(Sub(O.x,A.x))",
+      "premise": "AngleBisector(O,l,a,b)&PointOnLine(A,l)",
+      "conclusion": [
+        "Eq(Sub(Aa.dpl,Ab.dpl))"
+      ],
+      "proving": {}
+    },
+    "angle_bisector_determination_distance_equal(O,A,l,a,b)": {
+      "type": "basic",
+      "ee_check": [
+        "Point(O)",
+        "Point(A)",
+        "Line(l)",
+        "Line(a)",
+        "Line(b)"
+      ],
+      "ac_check": "Ueq(Sub(a.k,b.k))&Ueq(Sub(l.k,a.k))&Ueq(Sub(l.k,b.k))&G(Sub(MAM(a.k,b.k),MAM(a.k,l.k)))",
+      "premise": "PointOnLine(O,l)&PointOnLine(O,a)&PointOnLine(O,b)&Eq(Sub(Aa.dpl,Ab.dpl))",
+      "conclusion": [
+        "AngleBisector(O,l,a,b)"
+      ],
+      "proving": {}
+    },
     "parallel_property_angle_equal(a,l,k)": {
       "type": "basic",
       "ee_check": [
