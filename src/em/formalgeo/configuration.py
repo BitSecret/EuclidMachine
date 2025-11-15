@@ -2,12 +2,6 @@ from em.formalgeo.tools import letters_p, letters_l, letters_c
 from em.formalgeo.tools import parse_predicate, parse_algebra, replace_paras, replace_expr
 from sympy import symbols, nonlinsolve, tan, pi, nsimplify, sqrt
 import random
-import matplotlib
-import matplotlib.pyplot as plt
-
-matplotlib.use('TkAgg')  # 解决后端兼容性问题
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 使用微软雅黑
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 
 def _get_sym_from_entities(entities):
@@ -67,7 +61,7 @@ def _get_free_symbols(constraint_value):
     return sorted(list(free_symbols), key=str)  # set 默认乱序，如果不排序，会导致每次运行的sym顺序不一样，导致随机取值有差异
 
 
-class Configuration:
+class GeometricConfiguration:
     """The <Configuration> class represents the construction and reasoning process of a geometric configuration.
 
     Attributions:
@@ -743,6 +737,8 @@ class Configuration:
                     checked_results.append((premise_ids + algebraic_premise_ids, replace))
             results = checked_results
             # print(results)
+            # print()
+            # print(results)
 
             # add conclusions
             for premise_ids, replace in results:
@@ -787,18 +783,23 @@ class Configuration:
         for constraint in theorem_gdl['algebraic_premise']:
             constraint = replace_expr(constraint, replace)
             syms, equations, c_premise_ids = self._get_minimum_dependent_equations(constraint)
-            solved_value = list(nonlinsolve(equations, syms))[0]
+            solved_values = list(nonlinsolve(equations, syms))
+
+            if len(solved_values) == 0:  # not current algebraic premise
+                return False, None
+
+            solved_value = solved_values[0]
+
+            if solved_value[0] != 0:  # symbol t
+                return False, None
 
             operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
             added = False
-            for i in range(1, len(solved_value)):
+            for i in range(1, len(solved_value)):  # skip symbol t
                 if len(solved_value[i].free_symbols) == 0:
                     added = self._set_value_of_attr_sym(syms[i], solved_value[i], c_premise_ids, operation_id) or added
             if not added:
                 self._del_operation()
-
-            if solved_value[0] != 0:
-                return False, None
 
             premise_ids += c_premise_ids
 
@@ -873,6 +874,7 @@ class Configuration:
                     same_index.append((a_paras.index(bp), b_paras.index(bp)))
                 else:
                     add_index.append(b_paras.index(bp))
+            # print(a_paras, b_paras, same_index, add_index)
 
             result_paras = a_paras + [b_paras[b_index] for b_index in add_index]
             result_premise_ids = []
@@ -921,146 +923,3 @@ class Configuration:
             entity_ids = tuple(self._get_entity_ids('Equation', expr))
             add_new_fact = self._add('Equation', expr, premise_ids, entity_ids, operation_id) or add_new_fact
         return add_new_fact
-
-    def show(self):
-        used_operation_ids = set()
-
-        print('\033[33mEntities:\033[0m')
-        for entity in ['Point', 'Line', 'Circle']:
-            if len(self.ids_of_predicate[entity]) == 0:
-                continue
-            print(f'{entity}:')
-            for fact_id in self.ids_of_predicate[entity]:
-                used_operation_ids.add(self.facts[fact_id][4])
-                if entity == 'Point':
-                    values = [(round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.x')]), 4),
-                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.y')]), 4))]
-                elif entity == 'Line':
-                    values = [(round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.k')]), 4),
-                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.b')]), 4))]
-                else:
-                    values = [(round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.cx')]), 4),
-                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.cy')]), 4),
-                               round(float(self.value_of_para_sym[symbols(f'{self.facts[fact_id][1]}.r')]), 4))]
-                print('{0:<6}{1:<15}{2:<40}{3:<40}{4:<6}{5:<30}'.format(
-                    fact_id,
-                    self.facts[fact_id][1],
-                    str(self.facts[fact_id][2]),
-                    str(self.facts[fact_id][3]),
-                    self.facts[fact_id][4],
-                    str(values)
-                ))
-        print()
-
-        print("\033[33mConstructions:\033[0m")
-        for operation_id in self.constructions:
-            print('{0:<4}{1:<40}'.format(operation_id, self.operations[operation_id]))
-            target_predicate, target_entity = self.constructions[operation_id][0]
-            print(f'    target entity: {target_predicate}({target_entity})')
-            implicit_entities = [f'{p}({i})' for p, i in self.constructions[operation_id][1]]
-            print(f'    implicit entities: {implicit_entities}')
-            dependent_entities = [f'{p}({i})' for p, i in self.constructions[operation_id][2]]
-            print(f'    dependent entities: {dependent_entities}')
-            print(f"    Eq: {str(self.constructions[operation_id][3]['Eq']).replace(' ', '').replace(',', ', ')}")
-            print(f"    G: {str(self.constructions[operation_id][3]['G']).replace(' ', '').replace(',', ', ')}")
-            print(f"    Geq: {str(self.constructions[operation_id][3]['Geq']).replace(' ', '').replace(',', ', ')}")
-            print(f"    L: {str(self.constructions[operation_id][3]['L']).replace(' ', '').replace(',', ', ')}")
-            print(f"    Leq: {str(self.constructions[operation_id][3]['Leq']).replace(' ', '').replace(',', ', ')}")
-            print(f"    Ueq: {str(self.constructions[operation_id][3]['Ueq']).replace(' ', '').replace(',', ', ')}")
-        print()
-
-        print("\033[33mRelations:\033[0m")
-        for predicate in self.ids_of_predicate:
-            if len(self.ids_of_predicate[predicate]) == 0:
-                continue
-            if predicate in ['Point', 'Line', 'Circle', 'Equation']:
-                continue
-            print(f"{predicate}:")
-            for fact_id in self.ids_of_predicate[predicate]:
-                used_operation_ids.add(self.facts[fact_id][4])
-                print("{0:<6}{1:<15}{2:<40}{3:<40}{4:<6}".format(
-                    fact_id,
-                    ','.join(self.facts[fact_id][1]),
-                    str(self.facts[fact_id][2]),
-                    str(self.facts[fact_id][3]),
-                    self.facts[fact_id][4]
-                ))
-        print()
-
-        print("\033[33mEquations:\033[0m")
-        for fact_id in self.ids_of_predicate['Equation']:
-            used_operation_ids.add(self.facts[fact_id][4])
-            print("{0:<6}{1:<15}{2:<40}{3:<40}{4:<6}".format(
-                fact_id,
-                str(self.facts[fact_id][1]).replace(' ', ''),
-                str(self.facts[fact_id][2]),
-                str(self.facts[fact_id][3]),
-                self.facts[fact_id][4]
-            ))
-        print()
-
-        print("\033[33mSymbols and Values:\033[0m")
-        for sym in self.value_of_attr_sym:
-            equation_id = self.id['Equation', sym - self.value_of_attr_sym[sym]]
-            predicate = self.parsed_gdl['sym_to_measure'][str(sym).split('.')[1]]
-            instance = ",".join(list(str(sym).split('.')[0]))
-            print("{0:<6}{1:<25}{2:<25}{3:<6}".format(
-                equation_id,
-                f"{predicate}({instance})",
-                str(sym),
-                str(self.value_of_attr_sym[sym])
-            ))
-        print()
-
-        print("\033[33mOperations:\033[0m")
-        for i in range(len(self.operations)):
-            if i not in used_operation_ids:
-                continue
-            print("{0:<6}{1:<50}".format(
-                i,
-                f'{self.operations[i]}'
-            ))
-        print()
-
-    def get_hypergraph(self, serialize=False, filename=None):
-        pass
-
-    def get_figure(self, filename=None):
-        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # 点坐标的范围
-        _, ax = plt.subplots()
-        ax.axis('equal')  # maintain the circle's aspect ratio
-        ax.axis('off')  # hide the axes
-        middle_x = (self.range['x_max'] + self.range['x_min']) / 2
-        range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
-        middle_y = (self.range['y_max'] + self.range['y_min']) / 2
-        range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
-        # print(self.range)
-        # print(middle_x - range_x, middle_x + range_x)
-        # print(middle_y - range_y, middle_y + range_y)
-        ax.set_xlim(middle_x - range_x, middle_x + range_x)
-        ax.set_ylim(middle_y - range_y, middle_y + range_y)
-
-        for line in self.instances_of_predicate['Line']:
-            k = float(self.value_of_para_sym[symbols(f'{line}.k')])
-            b = float(self.value_of_para_sym[symbols(f'{line}.b')])
-            ax.axline((0, b), slope=k, color='blue')
-
-        for circle in self.instances_of_predicate['Circle']:
-            center_x = float(self.value_of_para_sym[symbols(f'{circle}.cx')])
-            center_y = float(self.value_of_para_sym[symbols(f'{circle}.cy')])
-            r = float(self.value_of_para_sym[symbols(f'{circle}.r')])
-            ax.add_artist(plt.Circle((center_x, center_y), r, color="green", fill=False))
-
-        for point in self.instances_of_predicate['Point']:
-            x = float(self.value_of_para_sym[symbols(f'{point}.x')])
-            y = float(self.value_of_para_sym[symbols(f'{point}.y')])
-            ax.plot(x, y, "o", color='red')
-            ax.text(x, y, point, ha='center', va='bottom')
-
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig(filename)
-
-    def find_possible_relations(self, filename=None):
-        pass

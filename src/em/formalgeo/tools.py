@@ -1,5 +1,13 @@
-from sympy import sympify, symbols, sqrt, atan, pi, acos
+from sympy import sympify, symbols, sqrt, atan, pi
 import json
+import matplotlib
+import matplotlib.pyplot as plt
+
+matplotlib.use('TkAgg')  # 解决后端兼容性问题
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 使用微软雅黑
+plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+
+"""↓------Available Entity Vocabulary------↓"""
 
 _lu = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
        'W', 'X', 'Y', 'Z')  # latin_upper 26
@@ -22,6 +30,9 @@ letters_p = tuple(list(_lu) + list(_lsu) + list(_gu) + list(_giu) + list(_ll) + 
 letters_l = tuple(list(_ll) + list(_lsl) + list(_gl) + list(_gil) + list(_lu) + list(_lsu) + list(_gu) + list(_giu))
 letters_c = tuple(list(_gu) + list(_giu) + list(_lu) + list(_lsu) + list(_gl) + list(_gil) + list(_ll) + list(_lsl))
 
+"""↑------Available Entity Vocabulary------↑"""
+"""↓--------------Useful Tools-------------↓"""
+
 
 def load_json(filename):
     with open(filename, "r", encoding="utf-8") as f:
@@ -31,6 +42,10 @@ def load_json(filename):
 def save_json(data, filename):
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+"""↑------------Useful Tools------------↑"""
+"""↓------------Data Parsing------------↓"""
 
 
 def parse_gdl(gdl):
@@ -294,6 +309,9 @@ def _parse_ee_check(ee_check, predicate_name, predicate_paras):
 
 
 def parse_predicate(predicate):
+    if ' ' in predicate:
+        e_msg = f"The format of '{predicate}' is incorrect. Spaces are not allowed in it's definition."
+        raise Exception(e_msg)
     name, paras = predicate.split('(')
     paras = paras[:-1].split(',')
     return name, paras
@@ -305,6 +323,10 @@ def replace_paras(paras, replace):
 
 
 def parse_algebra(algebra_constraint):
+    if ' ' in algebra_constraint:
+        e_msg = f"The format of '{algebra_constraint}' is incorrect. Spaces are not allowed in it's definition."
+        raise Exception(e_msg)
+
     algebra_relation, expr_str = algebra_constraint.split("(", 1)
     expr_str = expr_str[:-1]
 
@@ -405,9 +427,180 @@ def replace_expr(expr, replace):
     return expr
 
 
-def parse_disjunctive(general_form):   # 过几天在搞
+def parse_disjunctive(general_form):  # 过几天在搞
     """
     :param general_form: [general_form]
     :return: norm_form: [[conjunctive_clauses]]
     """
     pass
+
+
+"""↑----------------Data Parsing-----------------↑"""
+"""↓-----------Geometric Configuration-----------↓"""
+
+
+def show(gc):
+    used_operation_ids = set()
+
+    print('\033[33mEntities:\033[0m')
+    for entity in ['Point', 'Line', 'Circle']:
+        if len(gc.ids_of_predicate[entity]) == 0:
+            continue
+        print(f'{entity}:')
+        for fact_id in gc.ids_of_predicate[entity]:
+            used_operation_ids.add(gc.facts[fact_id][4])
+            if entity == 'Point':
+                values = [(round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1]}.x')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1]}.y')]), 4))]
+            elif entity == 'Line':
+                values = [(round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1]}.k')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1]}.b')]), 4))]
+            else:
+                values = [(round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1]}.cx')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1]}.cy')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1]}.r')]), 4))]
+            print('{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}{5:<30}'.format(
+                fact_id,
+                gc.facts[fact_id][1],
+                str(gc.facts[fact_id][2]),
+                str(gc.facts[fact_id][3]),
+                gc.facts[fact_id][4],
+                str(values)
+            ))
+    print()
+
+    print("\033[33mConstructions:\033[0m")
+    for operation_id in gc.constructions:
+        print('{0:<4}{1:<40}'.format(operation_id, gc.operations[operation_id]))
+        target_predicate, target_entity = gc.constructions[operation_id][0]
+        print(f'    target entity: {target_predicate}({target_entity})')
+        implicit_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][1]]
+        print(f'    implicit entities: {implicit_entities}')
+        dependent_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][2]]
+        print(f'    dependent entities: {dependent_entities}')
+        print(f"    Eq: {str(gc.constructions[operation_id][3]['Eq']).replace(' ', '').replace(',', ', ')}")
+        print(f"    G: {str(gc.constructions[operation_id][3]['G']).replace(' ', '').replace(',', ', ')}")
+        print(f"    Geq: {str(gc.constructions[operation_id][3]['Geq']).replace(' ', '').replace(',', ', ')}")
+        print(f"    L: {str(gc.constructions[operation_id][3]['L']).replace(' ', '').replace(',', ', ')}")
+        print(f"    Leq: {str(gc.constructions[operation_id][3]['Leq']).replace(' ', '').replace(',', ', ')}")
+        print(f"    Ueq: {str(gc.constructions[operation_id][3]['Ueq']).replace(' ', '').replace(',', ', ')}")
+    print()
+
+    print("\033[33mRelations:\033[0m")
+    for predicate in gc.ids_of_predicate:
+        if len(gc.ids_of_predicate[predicate]) == 0:
+            continue
+        if predicate in ['Point', 'Line', 'Circle', 'Equation']:
+            continue
+        print(f"{predicate}:")
+        for fact_id in gc.ids_of_predicate[predicate]:
+            used_operation_ids.add(gc.facts[fact_id][4])
+            print("{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}".format(
+                fact_id,
+                ','.join(gc.facts[fact_id][1]),
+                str(gc.facts[fact_id][2]).replace(' ', ''),
+                str(gc.facts[fact_id][3]).replace(' ', ''),
+                gc.facts[fact_id][4]
+            ))
+    print()
+
+    print("\033[33mEquations:\033[0m")
+    for fact_id in gc.ids_of_predicate['Equation']:
+        used_operation_ids.add(gc.facts[fact_id][4])
+        print("{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}".format(
+            fact_id,
+            str(gc.facts[fact_id][1]).replace(' ', ''),
+            str(gc.facts[fact_id][2]).replace(' ', ''),
+            str(gc.facts[fact_id][3]).replace(' ', ''),
+            gc.facts[fact_id][4]
+        ))
+    print()
+
+    print("\033[33mSymbols and Values:\033[0m")
+    for sym in gc.value_of_attr_sym:
+        equation_id = gc.id['Equation', sym - gc.value_of_attr_sym[sym]]
+        predicate = gc.parsed_gdl['sym_to_measure'][str(sym).split('.')[1]]
+        instance = ",".join(list(str(sym).split('.')[0]))
+        print("{0:<6}{1:<25}{2:<25}{3:<6}".format(
+            equation_id,
+            f"{predicate}({instance})",
+            str(sym),
+            str(gc.value_of_attr_sym[sym])
+        ))
+    print()
+
+    print("\033[33mOperations:\033[0m")
+    for i in range(len(gc.operations)):
+        if i not in used_operation_ids:
+            continue
+        print("{0:<6}{1:<50}".format(
+            i,
+            f'{gc.operations[i]}'
+        ))
+    print()
+
+
+def get_reasoning_hypergraph(gc):
+    pass
+
+
+def get_dependent_graph(gc):
+    pass
+
+
+def get_geometric_figure(gc):
+    pass
+
+
+def draw_reasoning_hypergraph(gc, filename):
+    pass
+
+
+def draw_dependent_graph(gc, filename):
+    pass
+
+
+def draw_geometric_figure(gc, filename):
+    gc.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # 点坐标的范围
+    _, ax = plt.subplots()
+    ax.axis('equal')  # maintain the circle's aspect ratio
+    ax.axis('off')  # hide the axes
+    middle_x = (gc.range['x_max'] + gc.range['x_min']) / 2
+    range_x = (gc.range['x_max'] - gc.range['x_min']) / 2 * gc.rate
+    middle_y = (gc.range['y_max'] + gc.range['y_min']) / 2
+    range_y = (gc.range['y_max'] - gc.range['y_min']) / 2 * gc.rate
+    # print(gc.range)
+    # print(middle_x - range_x, middle_x + range_x)
+    # print(middle_y - range_y, middle_y + range_y)
+    ax.set_xlim(middle_x - range_x, middle_x + range_x)
+    ax.set_ylim(middle_y - range_y, middle_y + range_y)
+
+    for line in gc.instances_of_predicate['Line']:
+        k = float(gc.value_of_para_sym[symbols(f'{line}.k')])
+        b = float(gc.value_of_para_sym[symbols(f'{line}.b')])
+        ax.axline((0, b), slope=k, color='blue')
+
+    for circle in gc.instances_of_predicate['Circle']:
+        center_x = float(gc.value_of_para_sym[symbols(f'{circle}.cx')])
+        center_y = float(gc.value_of_para_sym[symbols(f'{circle}.cy')])
+        r = float(gc.value_of_para_sym[symbols(f'{circle}.r')])
+        ax.add_artist(plt.Circle((center_x, center_y), r, color="green", fill=False))
+
+    for point in gc.instances_of_predicate['Point']:
+        x = float(gc.value_of_para_sym[symbols(f'{point}.x')])
+        y = float(gc.value_of_para_sym[symbols(f'{point}.y')])
+        ax.plot(x, y, "o", color='red')
+        ax.text(x, y, point, ha='center', va='bottom')
+
+    plt.savefig(filename)
+
+
+"""↑-----------Geometric Configuration-----------↑"""
+"""↓----------Latent Relation Discovery----------↓"""
+
+
+def find_possible_relations(gc):
+    pass
+
+
+"""↑----------Latent Relation Discovery----------↑"""
