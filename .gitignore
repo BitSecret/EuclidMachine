@@ -7,3 +7,9 @@ src/em.egg-info
 
 # data
 data
+
+# Qin Cheng project files
+/src/em/gcgen
+/src/em/gdl
+
+.vscode
