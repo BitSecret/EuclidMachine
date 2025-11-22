@@ -48,6 +48,43 @@ def save_json(data, filename):
 """↓------------Data Parsing------------↓"""
 
 
+def save_readable_parsed_gdl(parsed_gdl, filename):
+    for relation_name in parsed_gdl['Relations']:
+        relation = parsed_gdl['Relations'][relation_name]
+
+        for i in range(len(relation['extend'])):
+            predicate_name, para = relation['extend'][i]
+            if predicate_name == 'Equation':
+                relation['extend'][i] = (predicate_name, str(para))
+
+        for i in range(len(relation['constraints']['equations'])):
+            relation['constraints']['equations'][i] = str(relation['constraints']['equations'][i])
+        for i in range(len(relation['constraints']['inequalities'])):
+            relation_type, expr = relation['constraints']['inequalities'][i]
+            expr = str(expr)
+            relation['constraints']['inequalities'][i] = (relation_type, expr)
+
+    for theorem_name in parsed_gdl['Theorems']:
+        theorem = parsed_gdl['Theorems'][theorem_name]
+
+        for i in range(len(theorem['gpl'])):
+            for j in range(len(theorem['gpl'][i]['ac_checks'])):
+                relation_type, expr = theorem['gpl'][i]['ac_checks'][j]
+                theorem['gpl'][i]['ac_checks'][j] = (relation_type, str(expr))
+
+        for i in range(len(theorem['gpl'])):
+            for j in range(len(theorem['gpl'][i]['algebraic_premises'])):
+                theorem['gpl'][i]['algebraic_premises'][j] = str(theorem['gpl'][i]['algebraic_premises'][j])
+
+        for i in range(len(theorem['conclusions'])):
+            predicate, instance = theorem['conclusions'][i]
+            if predicate == 'Equation':
+                instance = str(instance)
+            theorem['conclusions'][i] = (predicate, instance)
+
+    save_json(parsed_gdl, filename)
+
+
 def parse_gdl(gdl):
     """Parse Geometry Definition Language into a usable format for Problem."""
     parsed_gdl = {
@@ -71,35 +108,6 @@ def parse_gdl(gdl):
         _parse_one_theorem(theorem, gdl, parsed_gdl)
 
     return parsed_gdl
-
-
-def save_readable_parsed_gdl(parsed_gdl, filename):
-    for relation_name in parsed_gdl['Relations']:
-        relation = parsed_gdl['Relations'][relation_name]
-
-        for i in range(len(relation['extend'])):
-            predicate_name, para = relation['extend'][i]
-            if predicate_name == 'Equation':
-                relation['extend'][i] = (predicate_name, str(para))
-
-        for constraint_class in relation['constraints']:
-            for i in range(len(relation['constraints'][constraint_class])):
-                relation['constraints'][constraint_class][i] = str(relation['constraints'][constraint_class][i])
-
-    for theorem_name in parsed_gdl['Theorems']:
-        theorem = parsed_gdl['Theorems'][theorem_name]
-
-        for constraint_class in theorem['ac_check']:
-            for i in range(len(theorem['ac_check'][constraint_class])):
-                theorem['ac_check'][constraint_class][i] = str(theorem['ac_check'][constraint_class][i])
-
-        for i in range(len(theorem['algebraic_premise'])):
-            theorem['algebraic_premise'][i] = str(theorem['algebraic_premise'][i])
-
-        for i in range(len(theorem['algebraic_conclusion'])):
-            theorem['algebraic_conclusion'][i] = str(theorem['algebraic_conclusion'][i])
-
-    save_json(parsed_gdl, filename)
 
 
 def _parse_one_entity(entity, gdl, parsed_gdl):
@@ -148,9 +156,8 @@ def _parse_one_measure(measure, gdl, parsed_gdl):
 def _parse_one_relation(relation, gdl, parsed_gdl):
     relation_name, relation_paras = parse_predicate(relation)
 
-    if relation_name in parsed_gdl['Measures']:
-        e_msg = f"Relation {relation_name} already defined."
-        raise Exception(e_msg)
+    if relation_name in parsed_gdl['Relations']:
+        return
 
     relation_type = gdl['Relations'][relation]['type']
     if relation_type not in ['basic', 'composite', 'indirect']:
@@ -170,7 +177,7 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
 
     relation_implicit_entity = {'Point': [], 'Line': [], 'Circle': []}
 
-    relation_constraints = {'Eq': [], 'G': [], 'Geq': [], 'L': [], 'Leq': [], 'Ueq': []}
+    relation_constraints = {'equations': [], 'inequalities': []}
 
     letters = list(letters_p)
     for e in relation_paras:
@@ -193,7 +200,10 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
                 or constraint.startswith('Geq(') or constraint.startswith('L(')
                 or constraint.startswith('Leq(') or constraint.startswith('Ueq(')):
             algebra_relation, expr = parse_algebra(constraint)
-            relation_constraints[algebra_relation].append(expr)
+            if algebra_relation == "Eq":
+                relation_constraints['equations'].append(expr)
+            else:
+                relation_constraints['inequalities'].append((algebra_relation, expr))
         else:
             constraint_name, constraint_paras = parse_predicate(constraint)
             if constraint_name not in parsed_gdl['Relations']:
@@ -215,10 +225,12 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
                     else:
                         replace[e] = letters.pop(0)
 
-            for constraint_class in parsed_gdl['Relations'][constraint_name]['constraints']:
-                for dependent_constraint in parsed_gdl['Relations'][constraint_name]['constraints'][constraint_class]:
-                    dependent_constraint = replace_expr(dependent_constraint, replace)
-                    relation_constraints[constraint_class].append(dependent_constraint)
+            for dependent_constraint in parsed_gdl['Relations'][constraint_name]['constraints']['equations']:
+                dependent_constraint = replace_expr(dependent_constraint, replace)
+                relation_constraints['equations'].append(dependent_constraint)
+            for al, dependent_constraint in parsed_gdl['Relations'][constraint_name]['constraints']['inequalities']:
+                dependent_constraint = replace_expr(dependent_constraint, replace)
+                relation_constraints['inequalities'].append((al, dependent_constraint))
 
             if len(set(constraint_paras) - set(relation_paras)) == 0:
                 relation_extend.append([constraint_name, constraint_paras])
@@ -236,7 +248,7 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
 def _parse_one_theorem(theorem, gdl, parsed_gdl):
     theorem_name, theorem_paras = parse_predicate(theorem)
 
-    if theorem_name in parsed_gdl['Measures']:
+    if theorem_name in parsed_gdl['Theorems']:
         e_msg = f"Theorem {theorem_name} already defined."
         raise Exception(e_msg)
 
@@ -248,43 +260,183 @@ def _parse_one_theorem(theorem, gdl, parsed_gdl):
 
     theorem_ee_check = _parse_ee_check(gdl['Theorems'][theorem]['ee_check'], theorem_name, theorem_paras)
 
-    theorem_ac_check = {'Eq': [], 'G': [], 'Geq': [], 'L': [], 'Leq': [], 'Ueq': []}
+    theorem_ac_checks = []  # (relation_type, expr, paras)
     if len(gdl['Theorems'][theorem]['ac_check']) > 0:
         for constraint in gdl['Theorems'][theorem]['ac_check'].split('&'):
             algebra_relation, expr = parse_algebra(constraint)
-            theorem_ac_check[algebra_relation].append(expr)
+            paras = [str(sym).split('.')[0] for sym in expr.free_symbols]
+            theorem_ac_checks.append((algebra_relation, expr, paras))
 
-    theorem_geometric_premise = []
-    theorem_algebraic_premise = []
+    theorem_geometric_premises = []  # (predicate, paras)
+    theorem_algebraic_premises = []  # (expr, paras)
 
     if len(gdl['Theorems'][theorem]['premise']) > 0:
         for premise in gdl['Theorems'][theorem]['premise'].split('&'):
             if premise.startswith('Eq('):
                 _, expr = parse_algebra(premise)
-                theorem_algebraic_premise.append(expr)
+                paras = []
+                for sym in expr.free_symbols:
+                    paras.extend(str(sym).split('.')[0])
+                theorem_algebraic_premises.append((expr, paras))
             else:
                 premise_name, premise_paras = parse_predicate(premise)
-                theorem_geometric_premise.append([premise_name, premise_paras])
+                theorem_geometric_premises.append((premise_name, tuple(premise_paras)))
 
-    theorem_geometric_conclusion = []
-    theorem_algebraic_conclusion = []
+    # adjust the execution order
+    products = []
+    added_paras = set()
+
+    paras_to_geometric_premises = {}
+    for premise_name, premise_paras in theorem_geometric_premises:
+        for p in list(set(premise_paras)):
+            if p not in paras_to_geometric_premises:
+                paras_to_geometric_premises[p] = [(premise_name, premise_paras)]
+            else:
+                paras_to_geometric_premises[p].append((premise_name, premise_paras))
+
+    for i in range(len(theorem_paras)):
+        if theorem_paras[i] not in paras_to_geometric_premises:
+            products.append((theorem_ee_check[i], (theorem_paras[i],)))
+            added_paras.add(theorem_paras[i])
+
+    for p in paras_to_geometric_premises:
+        if len(paras_to_geometric_premises[p]) == 1:
+            if paras_to_geometric_premises[p][0] not in products:
+                products.append(paras_to_geometric_premises[p][0])
+                theorem_geometric_premises.remove(paras_to_geometric_premises[p][0])
+                added_paras.update(paras_to_geometric_premises[p][0][1])
+
+    while len(added_paras) < len(theorem_paras):
+        max_index = 0
+        max_not_added_paras_len = len(set(theorem_geometric_premises[0][1]) - added_paras)
+        max_paras_len = len(theorem_geometric_premises[0][1])
+
+        for i in range(1, len(theorem_geometric_premises)):
+            not_added_paras_len = len(set(theorem_geometric_premises[i][1]) - added_paras)
+            paras_len = len(theorem_geometric_premises[i][1])
+
+            if not_added_paras_len > max_not_added_paras_len or (
+                    not_added_paras_len == max_not_added_paras_len and paras_len > max_paras_len):
+                max_index = i
+                max_not_added_paras_len = not_added_paras_len
+                max_paras_len = paras_len
+
+        products.append(theorem_geometric_premises[max_index])
+        added_paras.update(theorem_geometric_premises[max_index][1])
+        theorem_geometric_premises.pop(max_index)
+    products.sort(key=len, reverse=True)
+
+    gpl = []
+
+    predicate = products[0][0]
+    paras = products[0][1]
+    same_index = []
+    for i in range(len(paras)):
+        for j in range(i + 1, len(paras)):
+            if paras[i] == paras[j]:
+                same_index.append((i, j))
+    added_paras = list(paras)
+
+    ac_checks = []  # (relation_type, expr, paras)
+    for i in range(len(theorem_ac_checks))[::-1]:
+        ac_check_type, ac_check_expr, ac_check_paras = theorem_ac_checks[i]
+        if len(set(ac_check_paras) - set(added_paras)) == 0:
+            ac_checks.append(theorem_ac_checks[i])
+            theorem_ac_checks.pop(i)
+    ac_checks = sorted(ac_checks, key=lambda x: (len(x[2]), len(set(x[2]))), reverse=True)
+    ac_checks = [(relation_type, expr) for relation_type, expr, _ in ac_checks]
+
+    geometric_premises = []  # (predicate, paras)
+    for i in range(len(theorem_geometric_premises))[::-1]:
+        geometric_premises_predicate, geometric_premises_paras = theorem_geometric_premises[i]
+        if len(set(geometric_premises_paras) - set(added_paras)) == 0:
+            geometric_premises.append(theorem_geometric_premises[i])
+            theorem_geometric_premises.pop(i)
+    geometric_premises = sorted(geometric_premises, key=lambda x: (len(x[1]), len(set(x[1]))), reverse=True)
+
+    algebraic_premises = []  # (expr, paras)
+    for i in range(len(theorem_algebraic_premises))[::-1]:
+        algebraic_premises_expr, algebraic_premises_paras = theorem_algebraic_premises[i]
+        if len(set(algebraic_premises_paras) - set(added_paras)) == 0:
+            algebraic_premises.append(theorem_algebraic_premises[i])
+            theorem_algebraic_premises.pop(i)
+    algebraic_premises = sorted(algebraic_premises, key=lambda x: (len(x[1]), len(set(x[1]))), reverse=True)
+    algebraic_premises = [expr for expr, _ in algebraic_premises]
+
+    gpl.append({
+        "product": [predicate, paras, same_index],
+        "ac_checks": ac_checks,
+        "geometric_premises": geometric_premises,
+        "algebraic_premises": algebraic_premises
+    })
+
+    for predicate, paras in products[1:]:
+        same_index = []
+        for i in range(len(added_paras)):
+            for j in range(len(paras)):
+                if added_paras[i] == paras[j]:
+                    same_index.append((i, j))
+        added_index = []
+        for j in range(len(paras)):
+            if paras[j] not in added_paras:
+                added_index.append(j)
+                added_paras.append(paras[j])
+
+        ac_checks = []  # (relation_type, expr, paras)
+        for i in range(len(theorem_ac_checks))[::-1]:
+            ac_check_type, ac_check_expr, ac_check_paras = theorem_ac_checks[i]
+            if len(set(ac_check_paras) - set(added_paras)) == 0:
+                ac_checks.append(theorem_ac_checks[i])
+                theorem_ac_checks.pop(i)
+        ac_checks = sorted(ac_checks, key=lambda x: (len(x[2]), len(set(x[2]))), reverse=True)
+        ac_checks = [(relation_type, expr) for relation_type, expr, _ in ac_checks]
+
+        geometric_premises = []  # (predicate, paras)
+        for i in range(len(theorem_geometric_premises))[::-1]:
+            geometric_premises_predicate, geometric_premises_paras = theorem_geometric_premises[i]
+            if len(set(geometric_premises_paras) - set(added_paras)) == 0:
+                geometric_premises.append(theorem_geometric_premises[i])
+                theorem_geometric_premises.pop(i)
+        geometric_premises = sorted(geometric_premises, key=lambda x: (len(x[1]), len(set(x[1]))), reverse=True)
+
+        algebraic_premises = []  # (expr, paras)
+        for i in range(len(theorem_algebraic_premises))[::-1]:
+            algebraic_premises_expr, algebraic_premises_paras = theorem_algebraic_premises[i]
+            if len(set(algebraic_premises_paras) - set(added_paras)) == 0:
+                algebraic_premises.append(theorem_algebraic_premises[i])
+                theorem_algebraic_premises.pop(i)
+        algebraic_premises = sorted(algebraic_premises, key=lambda x: (len(x[1]), len(set(x[1]))), reverse=True)
+        algebraic_premises = [expr for expr, _ in algebraic_premises]
+
+        gpl.append({
+            "product": [predicate, paras, same_index, added_index],
+            "ac_checks": ac_checks,
+            "geometric_premises": geometric_premises,
+            "algebraic_premises": algebraic_premises
+        })
+
+    if len(theorem_ac_checks) != 0 or len(theorem_algebraic_premises) != 0 or len(theorem_geometric_premises) != 0:
+        e_msg = f"Unknown entity encountered while defining the theorem '{theorem_name}'."
+        print(theorem_ac_checks)
+        print(theorem_algebraic_premises)
+        print(theorem_geometric_premises)
+        raise Exception(e_msg)
+
+    # parse theorem conclusions
+    theorem_conclusions = []
     for conclusion in gdl['Theorems'][theorem]['conclusion']:
         if conclusion.startswith('Eq('):
             _, expr = parse_algebra(conclusion)
-            theorem_algebraic_conclusion.append(expr)
+            theorem_conclusions.append(('Equation', expr))
         else:
             conclusion_name, conclusion_paras = parse_predicate(conclusion)
-            theorem_geometric_conclusion.append([conclusion_name, conclusion_paras])
+            theorem_conclusions.append((conclusion_name, tuple(conclusion_paras)))
 
     parsed_gdl['Theorems'][theorem_name] = {
         'type': theorem_type,
         'paras': theorem_paras,
-        'ee_check': theorem_ee_check,
-        'ac_check': theorem_ac_check,
-        'geometric_premise': theorem_geometric_premise,
-        'algebraic_premise': theorem_algebraic_premise,
-        'geometric_conclusion': theorem_geometric_conclusion,
-        'algebraic_conclusion': theorem_algebraic_conclusion
+        'gpl': gpl,
+        'conclusions': theorem_conclusions
     }
 
 
@@ -439,8 +591,11 @@ def parse_disjunctive(general_form):  # 过几天在搞
 """↓-----------Geometric Configuration-----------↓"""
 
 
-def show(gc):
+def show(gc, target=None):
     used_operation_ids = set()
+    used_premise_ids = set()
+    if target is not None:
+        pass
 
     print('\033[33mEntities:\033[0m')
     for entity in ['Point', 'Line', 'Circle']:
@@ -462,10 +617,10 @@ def show(gc):
             print('{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}{5:<30}'.format(
                 fact_id,
                 gc.facts[fact_id][1],
-                str(gc.facts[fact_id][2]),
-                str(gc.facts[fact_id][3]),
+                str(gc.facts[fact_id][2]).replace(' ', ''),
+                str(gc.facts[fact_id][3]).replace(' ', ''),
                 gc.facts[fact_id][4],
-                str(values)
+                str(values).replace(' ', '')
             ))
     print()
 
@@ -478,12 +633,8 @@ def show(gc):
         print(f'    implicit entities: {implicit_entities}')
         dependent_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][2]]
         print(f'    dependent entities: {dependent_entities}')
-        print(f"    Eq: {str(gc.constructions[operation_id][3]['Eq']).replace(' ', '').replace(',', ', ')}")
-        print(f"    G: {str(gc.constructions[operation_id][3]['G']).replace(' ', '').replace(',', ', ')}")
-        print(f"    Geq: {str(gc.constructions[operation_id][3]['Geq']).replace(' ', '').replace(',', ', ')}")
-        print(f"    L: {str(gc.constructions[operation_id][3]['L']).replace(' ', '').replace(',', ', ')}")
-        print(f"    Leq: {str(gc.constructions[operation_id][3]['Leq']).replace(' ', '').replace(',', ', ')}")
-        print(f"    Ueq: {str(gc.constructions[operation_id][3]['Ueq']).replace(' ', '').replace(',', ', ')}")
+        print(f"    equations: {str(gc.constructions[operation_id][3]['equations']).replace(' ', '')}")
+        print(f"    inequalities: {str(gc.constructions[operation_id][3]['inequalities']).replace(' ', '')}")
     print()
 
     print("\033[33mRelations:\033[0m")
@@ -561,7 +712,6 @@ def draw_dependent_graph(gc, filename):
 
 
 def draw_geometric_figure(gc, filename):
-    gc.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # 点坐标的范围
     _, ax = plt.subplots()
     ax.axis('equal')  # maintain the circle's aspect ratio
     ax.axis('off')  # hide the axes

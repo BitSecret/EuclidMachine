@@ -34,22 +34,32 @@ def _get_dependent_entities(predicate, instance, parsed_gdl):
     return list(set(dependent_entities))
 
 
-def _satisfy_inequalities(sym_to_value, constraints):
-    """Satisfy Inequalities"""
-    for g in constraints['G']:
-        if g.subs(sym_to_value).evalf(chop=True) <= 0:
-            return False
-    for geq in constraints['Geq']:
-        if geq.subs(sym_to_value).evalf(chop=True) < 0:
-            return False
-    for l in constraints['L']:
-        if l.subs(sym_to_value).evalf(chop=True) >= 0:
-            return False
-    for leq in constraints['Leq']:
-        if leq.subs(sym_to_value).evalf(chop=True) > 0:
-            return False
-    for ueq in constraints['Ueq']:
-        if ueq.subs(sym_to_value).evalf(chop=True) == 0:
+def _satisfy_g(expr, sym_to_value):
+    return expr.subs(sym_to_value).evalf(chop=True) > 0
+
+
+def _satisfy_geq(expr, sym_to_value):
+    return expr.subs(sym_to_value).evalf(chop=True) >= 0
+
+
+def _satisfy_l(expr, sym_to_value):
+    return expr.subs(sym_to_value).evalf(chop=True) < 0
+
+
+def _satisfy_leq(expr, sym_to_value):
+    return expr.subs(sym_to_value).evalf(chop=True) <= 0
+
+
+def _satisfy_ueq(expr, sym_to_value):
+    return expr.subs(sym_to_value).evalf(chop=True) != 0
+
+
+_satisfy_inequality = {"G": _satisfy_g, "Geq": _satisfy_geq, "L": _satisfy_l, "Leq": _satisfy_leq, "Ueq": _satisfy_ueq}
+
+
+def _satisfy_inequalities(inequalities, sym_to_value):
+    for algebraic_relation, expr in inequalities:
+        if not _satisfy_inequality[algebraic_relation](expr, sym_to_value):
             return False
     return True
 
@@ -170,7 +180,6 @@ class GeometricConfiguration:
 
         self.facts = []  # fact_id -> (predicate, instance, premise_ids, entity_ids, operation_id)
         self.id = {}  # (predicate, instance) -> fact_id
-        self.groups = []  # operation_id -> [fact_id]
         self.ids_of_predicate = {'Point': [], 'Line': [], 'Circle': []}  # predicate -> [fact_id]
         self.instances_of_predicate = {'Point': [], 'Line': [], 'Circle': []}  # predicate -> [instance]
         for relation in self.parsed_gdl['Relations']:
@@ -179,6 +188,7 @@ class GeometricConfiguration:
         self.ids_of_predicate['Equation'] = []
         self.instances_of_predicate['Equation'] = []
         self.operations = []  # operation_id -> operation
+        self.groups = []  # operation_id -> [fact_id]
 
         self.value_of_para_sym = {}  # sym -> value
         self.constructions = {}  # operation_id -> (t_entity, i_entities, d_entities, constraints, solved_values)
@@ -187,14 +197,11 @@ class GeometricConfiguration:
         self.equations = []  # equation_id -> [[simplified_equation, fact_id, dependent_equation_fact_ids]]
         self.attr_sym_to_equations = {}  # sym -> [equation_id]
 
-    def _has(self, predicate, instance):
-        return instance in self.instances_of_predicate[predicate]
-
     def _add(self, predicate, instance, premise_ids, entity_ids, operation_id):
         if predicate == 'Equation' and str(instance)[0] == '-':
             instance = - instance
 
-        if self._has(predicate, instance):
+        if (predicate, instance) in self.id:
             return False
 
         fact_id = len(self.facts)
@@ -238,16 +245,13 @@ class GeometricConfiguration:
         replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
 
         operation_id = self._add_operation('auto_extend')
-        added = False
         for predicate, instance in self.parsed_gdl['Relations'][predicate]['extend']:
             if predicate == 'Equation':
                 instance = replace_expr(instance, replace)
             else:
                 instance = tuple(replace_paras(instance, replace))
             entity_ids = tuple(self._get_entity_ids(predicate, instance))
-            added = self._add(predicate, instance, (fact_id,), entity_ids, operation_id) or added
-        if not added:
-            self._del_operation()
+            self._add(predicate, instance, (fact_id,), entity_ids, operation_id)
 
         return True
 
@@ -256,9 +260,6 @@ class GeometricConfiguration:
         self.operations.append(operation)
         self.groups.append([])
         return operation_id
-
-    def _del_operation(self):
-        self.operations.pop()
 
     def construct(self, entity):
         """Construct a new point, line, or circle.
@@ -302,7 +303,7 @@ class GeometricConfiguration:
 
         t_entity, i_entities, d_entities, parsed_constraints, added_facts = self._parse_entity(entity, letters)
         i_entities, constraints = self._merge_constraints(i_entities, parsed_constraints, letters)
-        solved_values = self._solve_constraints(t_entity, i_entities, d_entities, constraints)
+        solved_values = self._solve_constraints(t_entity, i_entities, constraints)
 
         # 非严格线性构造问题，可能面临构图回溯的操作。回溯操作时，不影响已经添加到fact的实体，只是重新计算实体的参数。
         if len(solved_values) == 0:  # No solved entity
@@ -537,14 +538,20 @@ class GeometricConfiguration:
         return target_entity, implicit_entities, dependent_entities, parsed_constraints, added_facts
 
     def _merge_constraints(self, implicit_entities, parsed_constraints, letters):
-        constraints = {'Eq': [], 'G': [], 'Geq': [], 'L': [], 'Leq': [], 'Ueq': []}
+        # {'Equations': [expr], 'Inequalities': [('Ueq', expr)]}
+        constraints = {'equations': [], 'inequalities': []}
 
         for predicate, instance in parsed_constraints:
             if type(instance) is not tuple:
-                constraints[predicate].append(instance)
+                if predicate == 'Eq':
+                    constraints['equations'].append(instance)
+                else:
+                    constraints['inequalities'].append((predicate, instance))
             else:
                 relation = self.parsed_gdl['Relations'][predicate]
                 replace = dict(zip(relation['paras'], instance))
+
+                # add implicit entities
                 for implicit_predicate in relation['implicit_entity']:
                     for implicit_instance in relation['implicit_entity'][implicit_predicate]:
                         if implicit_instance in letters[implicit_predicate]:
@@ -554,35 +561,39 @@ class GeometricConfiguration:
                             replaced_instance = letters[implicit_predicate].pop(0)
                             replace[implicit_instance] = replaced_instance
                             implicit_entities.append((implicit_predicate, replaced_instance))
-                for constraint_type in relation['constraints']:
-                    for constraint in relation['constraints'][constraint_type]:
-                        constraint = replace_expr(constraint, replace)
-                        constraints[constraint_type].append(constraint)
+
+                # merge constraints
+                for constraint in relation['constraints']['equations']:
+                    constraint = replace_expr(constraint, replace)
+                    constraints['equations'].append(constraint)
+                for constraint_type, constraint in relation['constraints']['inequalities']:
+                    constraint = replace_expr(constraint, replace)
+                    constraints['inequalities'].append((constraint_type, constraint))
 
         return implicit_entities, constraints
 
-    def _solve_constraints(self, target_entity, implicit_entities, dependent_entities, constraints):
+    def _solve_constraints(self, target_entity, implicit_entities, constraints):
         target_syms = _get_sym_from_entities([target_entity])
         implicit_syms = _get_sym_from_entities(implicit_entities)
         solved_values = []  # list of values, such as [[1, 0.5], [1.5, 0.5]]
         constraint_values = []  # list of constraint values, contains symbols, such as [[y, y - 1], [x, 0.5]]
 
-        sym_to_value = {}  # replace dependent entity's parameter
-        for sym in _get_sym_from_entities(dependent_entities):
-            sym_to_value[sym] = self.value_of_para_sym[sym]
-        replaced_constraints = {'Eq': [], 'G': [], 'Geq': [], 'L': [], 'Leq': [], 'Ueq': []}
-        for constraint_type in constraints:
-            for constraint in constraints[constraint_type]:
-                replaced_constraints[constraint_type].append(constraint.subs(sym_to_value))
+        # {'equations': [expr], 'inequalities': [('Ueq', expr)]}
+        replaced_constraints = {'equations': [], 'inequalities': []}
+        for constraint in constraints['equations']:
+            replaced_constraints['equations'].append(constraint.subs(self.value_of_para_sym))
+        for constraint_type, constraint in constraints['inequalities']:
+            constraint = constraint.subs(self.value_of_para_sym)
+            replaced_constraints['inequalities'].append((constraint_type, constraint))
 
-        if len(replaced_constraints['Eq']) == 0:  # free point
-            constraint_values.append(tuple(target_syms + implicit_syms))
+        syms = target_syms + implicit_syms
+        if len(replaced_constraints['equations']) == 0:  # free point
+            constraint_values.append(syms)
         else:
-            for solved_value in list(nonlinsolve(replaced_constraints['Eq'], target_syms + implicit_syms)):
+            for solved_value in list(nonlinsolve(replaced_constraints['equations'], syms)):
                 if len(_get_free_symbols(solved_value)) == 0:
-                    if _satisfy_inequalities(dict(zip(target_syms + implicit_syms, solved_value)),
-                                             replaced_constraints):
-                        solved_values.append(tuple(list(solved_value)[0:len(target_syms)]))
+                    if _satisfy_inequalities(replaced_constraints['inequalities'], dict(zip(syms, solved_value))):
+                        solved_values.append(list(solved_value)[0:len(target_syms)])
                 else:
                     constraint_values.append(solved_value)
 
@@ -594,10 +605,10 @@ class GeometricConfiguration:
         epoch = 0
         while len(solved_values) < self.max_samples and epoch < self.max_epoch:
             constraint_value = constraint_values[epoch % len(constraint_values)]
-            solved_value = self._random_value(target_syms + implicit_syms, constraint_value)
-            sym_to_value = dict(zip(target_syms + implicit_syms, solved_value))
-            if _satisfy_inequalities(sym_to_value, replaced_constraints):
-                solved_values.append(tuple(list(solved_value)[0:len(target_syms)]))
+            solved_value = self._random_value(syms, constraint_value)
+            sym_to_value = dict(zip(syms, solved_value))
+            if _satisfy_inequalities(replaced_constraints['inequalities'], sym_to_value):
+                solved_values.append(list(solved_value)[0:len(target_syms)])
             epoch += 1
         # print(solved_values)
         # print()
@@ -608,7 +619,7 @@ class GeometricConfiguration:
         random_values = {}
         for i in range(len(syms)):  # save k for sampling b
             if len(constraint_value[i].free_symbols) == 0:
-                random_values[syms[i]] = constraint_value[i]
+                random_values[syms[i]] = float(constraint_value[i])
 
         unsolved_syms = _get_free_symbols(constraint_value)
 
@@ -616,7 +627,7 @@ class GeometricConfiguration:
             if str(sym).split('.')[1] != 'k':
                 continue
             random_k = tan(random.uniform(-89, 89) * pi / 180)
-            random_k = nsimplify(random_k, tolerance=self.tolerance)
+            # random_k = nsimplify(random_k, tolerance=self.tolerance)
             random_values[sym] = random_k
 
         for sym in unsolved_syms:
@@ -624,19 +635,19 @@ class GeometricConfiguration:
                 middle_x = (self.range['x_max'] + self.range['x_min']) / 2
                 range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
                 random_x = random.uniform(float(middle_x - range_x), float(middle_x + range_x))
-                random_x = nsimplify(random_x, tolerance=self.tolerance)
+                # random_x = nsimplify(random_x, tolerance=self.tolerance)
                 random_values[sym] = random_x
             elif str(sym).split('.')[1] in ['y', 'cy']:
                 middle_y = (self.range['y_max'] + self.range['y_min']) / 2
                 range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
                 random_y = random.uniform(float(middle_y - range_y), float(middle_y + range_y))
-                random_y = nsimplify(random_y, tolerance=self.tolerance)
+                # random_y = nsimplify(random_y, tolerance=self.tolerance)
                 random_values[sym] = random_y
             elif str(sym).split('.')[1] == 'r':
                 max_distance = float(sqrt((self.range['y_max'] - self.range['y_min']) ** 2 +
                                           (self.range['x_max'] - self.range['x_min']) ** 2)) / 2 * self.rate
                 random_r = random.uniform(0, max_distance)
-                random_r = nsimplify(random_r, tolerance=self.tolerance)
+                # random_r = nsimplify(random_r, tolerance=self.tolerance)
                 random_values[sym] = random_r
             elif str(sym).split('.')[1] == 'b':
                 middle_x = (self.range['x_max'] + self.range['x_min']) / 2
@@ -650,12 +661,12 @@ class GeometricConfiguration:
                            float(middle_y + range_y - k_value * (middle_x + range_x)),
                            float(middle_y - range_y - k_value * (middle_x + range_x))]
                 random_b = random.uniform(min(b_range), max(b_range))
-                random_b = nsimplify(random_b, tolerance=self.tolerance)
+                # random_b = nsimplify(random_b, tolerance=self.tolerance)
                 random_values[sym] = random_b
             else:  # str(sym).split('.')[1] == 'k'
                 continue
 
-        solved_value = [item.subs(random_values) for item in constraint_value]
+        solved_value = [float(item.subs(random_values)) for item in constraint_value]
 
         return tuple(solved_value)
 
@@ -679,110 +690,199 @@ class GeometricConfiguration:
         Returns:
             result (bool): If applying the theorem adds new conditions, return True; otherwise, return False.
         """
+        theorem_name, theorem_paras = self._parse_theorem(theorem)
         added = False
 
-        if '(' in theorem:  # parameterized form
+        if theorem_paras is not None:  # parameterized form
             theorem_name, theorem_paras = parse_predicate(theorem)
             theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
+
+            gpl_one_term = theorem_gdl['gpl'][0]
+            product = gpl_one_term['product']
+            ac_checks = gpl_one_term['ac_checks']
+            geometric_premises = gpl_one_term['geometric_premises']
+            algebraic_premises = gpl_one_term['algebraic_premises']
+
             replace = dict(zip(theorem_gdl['paras'], theorem_paras))
+            predicate = product[0]
+            instance = tuple(replace_paras(product[1], replace))
 
-            # EE check
-            passed, premise_ids = self._pass_ee_check(theorem_gdl, replace)
+            if (predicate, instance) not in self.id:
+                return False
+            a_premise_ids = [self.id[(predicate, instance)]]
+
+            # check constraints
+            passed, premise_ids = self._pass_constraints(
+                geometric_premises, ac_checks, algebraic_premises, replace)
             if not passed:
                 return False
+            a_premise_ids.extend(premise_ids)
 
-            # AC check
-            passed = self._pass_ac_check(theorem_gdl, replace)
-            if not passed:
-                return False
+            for gpl_one_term in theorem_gdl['gpl'][1:]:
+                product = gpl_one_term['product']
+                ac_checks = gpl_one_term['ac_checks']
+                geometric_premises = gpl_one_term['geometric_premises']
+                algebraic_premises = gpl_one_term['algebraic_premises']
+                predicate = product[0]
+                instance = tuple(replace_paras(product[1], replace))
 
-            # geometric premise
-            passed, geometric_premise_ids = self._pass_geometric_premise(theorem_gdl, replace)
-            if not passed:
-                return False
-            premise_ids += geometric_premise_ids
+                if (predicate, instance) not in self.id:
+                    return False
 
-            # algebraic premise
-            passed, algebraic_premise_ids = self._pass_algebraic_premise(theorem_gdl, replace)
-            if not passed:
-                return False
-            premise_ids += algebraic_premise_ids
+                a_premise_ids.append(self.id[(predicate, instance)])
 
-            # add theorem to self.operations
+                # check constraints
+                passed, premise_ids = self._pass_constraints(
+                    geometric_premises, ac_checks, algebraic_premises, replace)
+                if not passed:
+                    return False
+                a_premise_ids.extend(premise_ids)
+
+            # add operation
             operation_id = self._add_operation(theorem)
 
             # add conclusions
-            added = self._add_geometric_conclusions(theorem_gdl, replace, premise_ids, operation_id) or added
-            added = self._add_algebraic_conclusions(theorem_gdl, replace, premise_ids, operation_id) or added
+            added = self._add_conclusions(theorem_gdl['conclusions'], replace, premise_ids, operation_id) or added
         else:  # parameter-free form
             theorem_name = theorem
             theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
 
-            # run geometric predicate logic
-            results = self._run_gpl(theorem_gdl)
+            paras, instances, premise_ids = self._run_gpl(theorem_gdl['gpl'])
+            for i in range(len(instances)):
+                replace = dict(zip(paras, instances[i]))
 
-            # ac check
-            checked_results = []
-            for premise_ids, replace in results:
-                if self._pass_ac_check(theorem_gdl, replace):
-                    checked_results.append((premise_ids, replace))
-            results = checked_results
-            # print(results)
-
-            # check algebraic premise
-            checked_results = []
-            for premise_ids, replace in results:
-                passed, algebraic_premise_ids = self._pass_algebraic_premise(theorem_gdl, replace)
-                if passed:
-                    checked_results.append((premise_ids + algebraic_premise_ids, replace))
-            results = checked_results
-            # print(results)
-            # print()
-            # print(results)
-
-            # add conclusions
-            for premise_ids, replace in results:
-                theorem_paras = replace_paras(theorem_gdl['paras'], replace)  # add theorem to self.operations
-
+                # add operation
+                theorem_paras = replace_paras(theorem_gdl['paras'], replace)
                 operation_id = self._add_operation(theorem_name + '(' + ','.join(theorem_paras) + ')')
+
                 # add conclusions
-                added = self._add_geometric_conclusions(theorem_gdl, replace, tuple(premise_ids), operation_id) or added
-                added = self._add_algebraic_conclusions(theorem_gdl, replace, tuple(premise_ids), operation_id) or added
+                added = self._add_conclusions(theorem_gdl['conclusions'], replace, premise_ids[i],
+                                              operation_id) or added
 
         return added
 
-    def _pass_ee_check(self, theorem_gdl, replace):
+    def _parse_theorem(self, theorem):
+        if '(' in theorem:
+            theorem_name, theorem_paras = parse_predicate(theorem)
+            if len(theorem_paras) != len(self.parsed_gdl["Theorems"][theorem_name]['paras']):
+                e_msg = f"Theorem '{theorem_name}' has wrong number of paras."
+                raise Exception(e_msg)
+        else:
+            theorem_name = theorem
+            theorem_paras = None
+
+        if theorem_name not in self.parsed_gdl["Theorems"]:
+            e_msg = f"Unknown theorem name: '{theorem_name}'."
+            raise Exception(e_msg)
+
+        return theorem_name, theorem_paras
+
+    def _run_gpl(self, gpl):
+        gpl_one_term = gpl[0]
+        product = gpl_one_term['product']
+        ac_checks = gpl_one_term['ac_checks']
+        geometric_premises = gpl_one_term['geometric_premises']
+        algebraic_premises = gpl_one_term['algebraic_premises']
+        predicate = product[0]
+        paras = product[1]
+        same_index = product[2]
+
+        a_paras = list(paras)
+        a_instances = []
+        a_premise_ids = []
+        for i in range(len(self.instances_of_predicate[predicate])):
+            # check same index constraint
+            pass_same_index = True
+            for i_a, j_a in same_index:
+                if self.instances_of_predicate[predicate][i][i_a] != self.instances_of_predicate[predicate][i][j_a]:
+                    pass_same_index = False
+                    break
+            if not pass_same_index:
+                continue
+
+            replace = dict(zip(a_paras, self.instances_of_predicate[predicate][i]))
+
+            # check constraints
+            passed, premise_ids = self._pass_constraints(
+                geometric_premises, ac_checks, algebraic_premises, replace)
+            if not passed:
+                continue
+
+            a_instances.append(list(self.instances_of_predicate[predicate][i]))
+            a_premise_id = [self.ids_of_predicate[predicate][i]]
+            a_premise_id.extend(premise_ids)
+            a_premise_ids.append(a_premise_id)
+
+        for gpl_one_term in gpl[1:]:
+            product = gpl_one_term['product']
+            ac_checks = gpl_one_term['ac_checks']
+            geometric_premises = gpl_one_term['geometric_premises']
+            algebraic_premises = gpl_one_term['algebraic_premises']
+            predicate = product[0]
+            paras = product[1]
+            same_index = product[2]
+            add_index = product[3]
+
+            a_paras.extend([paras[p_i] for p_i in add_index])
+            new_instances = []
+            new_premise_ids = []
+
+            for i in range(len(a_instances)):
+                for j in range(len(self.instances_of_predicate[predicate])):
+                    a_instance = a_instances[i]
+                    b_instance = self.instances_of_predicate[predicate][j]
+
+                    # constrained cartesian product: check same index constraint
+                    passed = True
+                    for i_a, i_b in same_index:
+                        if a_instance[i_a] != b_instance[i_b]:
+                            passed = False
+                            break
+                    if not passed:
+                        continue
+
+                    # constrained cartesian product: add different letter
+                    new_instance = list(a_instance)
+                    new_instance.extend([b_instance[i_b] for i_b in add_index])
+
+                    replace = dict(zip(a_paras, new_instance))
+
+                    # check constraints
+                    passed, premise_ids = self._pass_constraints(
+                        geometric_premises, ac_checks, algebraic_premises, replace)
+                    if not passed:
+                        continue
+
+                    new_instances.append(new_instance)
+                    new_premise_id = list(a_premise_ids[i])
+                    new_premise_id.append(self.id[(predicate, b_instance)])
+                    new_premise_id.extend(premise_ids)
+                    new_premise_ids.append(new_premise_id)
+
+            a_instances = new_instances
+            a_premise_ids = new_premise_ids
+        return a_paras, a_instances, a_premise_ids
+
+    def _pass_constraints(self, geometric_premises, ac_checks, algebraic_premises, replace):
         premise_ids = []
-        for i in range(len(theorem_gdl['paras'])):
-            predicate = theorem_gdl['ee_check'][i]
-            instance = (replace[theorem_gdl['paras'][i]],)
-            if not self._has(predicate, instance):
+
+        # check geometric premises
+        for predicate, paras in geometric_premises:
+            fact = (predicate, tuple(replace_paras(paras, replace)))
+            if fact not in self.id:
                 return False, None
-            premise_ids.append(self.id[(predicate, instance)])
-        return True, premise_ids
+            premise_ids.append(self.id[fact])
 
-    def _pass_ac_check(self, theorem_gdl, replace):
-        constraints = {'Eq': [], 'G': [], 'Geq': [], 'L': [], 'Leq': [], 'Ueq': []}
-        for algebraic_type in theorem_gdl['ac_check']:
-            for constraint in theorem_gdl['ac_check'][algebraic_type]:
-                constraints[algebraic_type].append(replace_expr(constraint, replace))
-        return _satisfy_inequalities(self.value_of_para_sym, constraints)
-
-    def _pass_geometric_premise(self, theorem_gdl, replace):
-        premise_ids = []
-        for predicate, instance in theorem_gdl['geometric_premise']:
-            instance = replace_paras(instance, replace)
-            if not self._has(predicate, tuple(instance)):
+        # check algebraic constraint of dependent entity
+        for algebraic_relation, expr in ac_checks:
+            expr = replace_expr(expr, replace)
+            if not _satisfy_inequality[algebraic_relation](expr, self.value_of_para_sym):
                 return False, None
-            premise_ids.append(self.id[(predicate, tuple(instance))])
-        return True, premise_ids
 
-    def _pass_algebraic_premise(self, theorem_gdl, replace):
-        premise_ids = []
-
-        for constraint in theorem_gdl['algebraic_premise']:
-            constraint = replace_expr(constraint, replace)
-            syms, equations, c_premise_ids = self._get_minimum_dependent_equations(constraint)
+        # check algebraic premises
+        for expr in algebraic_premises:
+            expr = replace_expr(expr, replace)
+            syms, equations, premise_id = self._get_minimum_dependent_equations(expr)
             solved_values = list(nonlinsolve(equations, syms))
 
             if len(solved_values) == 0:  # not current algebraic premise
@@ -794,31 +894,13 @@ class GeometricConfiguration:
                 return False, None
 
             operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
-            added = False
             for i in range(1, len(solved_value)):  # skip symbol t
                 if len(solved_value[i].free_symbols) == 0:
-                    added = self._set_value_of_attr_sym(syms[i], solved_value[i], c_premise_ids, operation_id) or added
-            if not added:
-                self._del_operation()
+                    self._set_value_of_attr_sym(syms[i], solved_value[i], premise_id, operation_id)
 
-            premise_ids += c_premise_ids
+            premise_ids += premise_id
 
         return True, premise_ids
-
-    def _set_value_of_attr_sym(self, sym, value, premise_ids, operation_id):
-        if sym in self.value_of_attr_sym:
-            return False
-
-        self.value_of_attr_sym[sym] = value
-        entity_ids = self._get_entity_ids('Equation', sym - value)
-        added = self._add('Equation', sym - value, premise_ids, entity_ids, operation_id)
-
-        for equation_id in self.attr_sym_to_equations[sym]:
-            self.equations[equation_id][0] = self.equations[equation_id][0].subs({sym: value})
-            self.equations[equation_id][2].append(self.id[('Equation', sym - value)])
-        self.attr_sym_to_equations.pop(sym)
-
-        return added
 
     def _get_minimum_dependent_equations(self, target_expr):
         syms = [symbols('t')]
@@ -853,73 +935,30 @@ class GeometricConfiguration:
 
         return syms, equations, premise_ids
 
-    def _run_gpl(self, theorem_gdl):
-        gpl = list(theorem_gdl['geometric_premise'])
-        # print(gpl)
-        for i in range(len(theorem_gdl['paras'])):
-            gpl.append((theorem_gdl['ee_check'][i], [theorem_gdl['paras'][i]]))
+    def _set_value_of_attr_sym(self, sym, value, premise_ids, operation_id):
+        if sym in self.value_of_attr_sym:
+            return False
 
-        predicate, a_paras = gpl[0]
-        a_premise_ids = [[_id] for _id in self.ids_of_predicate[predicate]]
-        a_instances = [list(_instance) for _instance in self.instances_of_predicate[predicate]]
+        self.value_of_attr_sym[sym] = value
+        entity_ids = self._get_entity_ids('Equation', sym - value)
+        added = self._add('Equation', sym - value, premise_ids, entity_ids, operation_id)
 
-        for predicate, b_paras in gpl[1:]:
-            b_premise_ids = self.ids_of_predicate[predicate]
-            b_instances = self.instances_of_predicate[predicate]
+        for equation_id in self.attr_sym_to_equations[sym]:
+            self.equations[equation_id][0] = self.equations[equation_id][0].subs({sym: value})
+            self.equations[equation_id][2].append(self.id[('Equation', sym - value)])
+        self.attr_sym_to_equations.pop(sym)
 
-            same_index = []  # (a_index, b_index)
-            add_index = []  # b_index
-            for bp in b_paras:
-                if bp in a_paras:
-                    same_index.append((a_paras.index(bp), b_paras.index(bp)))
-                else:
-                    add_index.append(b_paras.index(bp))
-            # print(a_paras, b_paras, same_index, add_index)
+        return added
 
-            result_paras = a_paras + [b_paras[b_index] for b_index in add_index]
-            result_premise_ids = []
-            result_instances = []
-
-            for i in range(len(a_instances)):
-                for j in range(len(b_instances)):
-                    pass_check = True
-                    for a_index, b_index in same_index:
-                        if a_instances[i][a_index] != b_instances[j][b_index]:
-                            pass_check = False
-                            break
-                    if not pass_check:
-                        continue
-
-                    result_premise_ids.append(a_premise_ids[i] + [b_premise_ids[j]])
-                    result_instances.append(a_instances[i] + [b_instances[j][b_index] for b_index in add_index])
-
-            a_paras = result_paras
-            a_premise_ids = result_premise_ids
-            a_instances = result_instances
-
-        order_adjustment = [a_paras.index(p) for p in theorem_gdl['paras']]
-        results = []  # (premise_ids, replace)
-        for i in range(len(a_instances)):
-            replace = dict(zip(theorem_gdl['paras'], [a_instances[i][a_index] for a_index in order_adjustment]))
-            results.append((a_premise_ids[i], replace))
-        # print(results)
-
-        return results
-
-    def _add_geometric_conclusions(self, theorem_gdl, replace, premise_ids, operation_id):
+    def _add_conclusions(self, conclusions, replace, premise_ids, operation_id):
         add_new_fact = False
-        for predicate, instance in theorem_gdl['geometric_conclusion']:
-            instance = tuple(replace_paras(instance, replace))
-            entity_ids = tuple(self._get_entity_ids(predicate, instance))
+        for predicate, instance in conclusions:
+            if predicate == "Equation":
+                instance = replace_expr(instance, replace)
+                if len(instance.free_symbols) == 0:
+                    continue
+            else:
+                instance = tuple(replace_paras(instance, replace))
+            entity_ids = self._get_entity_ids(predicate, instance)
             add_new_fact = self._add(predicate, instance, premise_ids, entity_ids, operation_id) or add_new_fact
-        return add_new_fact
-
-    def _add_algebraic_conclusions(self, theorem_gdl, replace, premise_ids, operation_id):
-        add_new_fact = False
-        for expr in theorem_gdl['algebraic_conclusion']:
-            expr = replace_expr(expr, replace)
-            if len(expr.free_symbols) == 0:
-                continue
-            entity_ids = tuple(self._get_entity_ids('Equation', expr))
-            add_new_fact = self._add('Equation', expr, premise_ids, entity_ids, operation_id) or add_new_fact
         return add_new_fact

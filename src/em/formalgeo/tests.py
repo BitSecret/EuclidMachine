@@ -49,4 +49,5 @@ if __name__ == '__main__':
     #     parsed_gdl=parse_gdl(load_json('../../../data/test_gdl.json')),
     #     filename='../../../data/outputs/parsed_gdl.json'
     # )
-    test2()
+    test1()
+
