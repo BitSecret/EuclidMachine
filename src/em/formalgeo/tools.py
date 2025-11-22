@@ -1,4 +1,4 @@
-from sympy import sympify, symbols, sqrt, atan, pi
+from sympy import sympify, symbols, atan, pi, sqrt
 import json
 import matplotlib
 import matplotlib.pyplot as plt
@@ -510,9 +510,9 @@ def parse_algebra(algebra_constraint):
                     break
                 if type(p) is str:
                     if '.' in p:
-                        p = symbols(p)
+                        p = symbols(p, real=True)
                     else:
-                        p = sympify(p)
+                        p = sympify(p)  # constant
 
                 paras.append(p)
             paras = paras[::-1]
@@ -533,12 +533,18 @@ def parse_algebra(algebra_constraint):
                 result = paras[0] / paras[1]
             elif operation == 'Pow':
                 result = paras[0] ** paras[1]
+            # elif operation == 'AbS':
+            #     result = sqrt(paras[0] ** 2)
+            # elif operation == 'DPP':  # DPP(x1,y1,x2,y2)
+            #     result = sqrt((paras[2] - paras[0]) ** 2 + (paras[3] - paras[1]) ** 2)
+            # elif operation == 'DPL':  # DPL(x,y,k,b)
+            #     result = (paras[2] * paras[0] - paras[1] + paras[3]) / sqrt(paras[2] ** 2 + 1)
             elif operation == 'Abs':
-                result = sqrt(paras[0] ** 2)
+                result = paras[0] ** 2
             elif operation == 'DPP':  # DPP(x1,y1,x2,y2)
-                result = sqrt((paras[2] - paras[0]) ** 2 + (paras[3] - paras[1]) ** 2)
+                result = (paras[2] - paras[0]) ** 2 + (paras[3] - paras[1]) ** 2
             elif operation == 'DPL':  # DPL(x,y,k,b)
-                result = (paras[2] * paras[0] - paras[1] + paras[3]) / sqrt(paras[2] ** 2 + 1)
+                result = (paras[2] * paras[0] - paras[1] + paras[3]) ** 2 / (paras[2] ** 2 + 1)
             elif operation == 'MA':  # MA(k1,k2)
                 result = (atan(paras[0]) - atan(paras[1])) * 180 / pi
             elif operation == 'MAM':  # MAM(k1,k2)

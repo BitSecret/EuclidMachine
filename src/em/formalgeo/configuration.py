@@ -1,6 +1,6 @@
 from em.formalgeo.tools import letters_p, letters_l, letters_c
 from em.formalgeo.tools import parse_predicate, parse_algebra, replace_paras, replace_expr
-from sympy import symbols, nonlinsolve, tan, pi, nsimplify, sqrt
+from sympy import symbols, nonlinsolve, tan, pi, FiniteSet
 import random
 
 
@@ -590,7 +590,14 @@ class GeometricConfiguration:
         if len(replaced_constraints['equations']) == 0:  # free point
             constraint_values.append(syms)
         else:
-            for solved_value in list(nonlinsolve(replaced_constraints['equations'], syms)):
+            solved_results = nonlinsolve(replaced_constraints['equations'], syms)
+            print(constraints)
+            print(replaced_constraints)
+            print(syms)
+            print(solved_results)
+            if type(solved_results) is not FiniteSet:
+                return solved_values
+            for solved_value in list(solved_results):
                 if len(_get_free_symbols(solved_value)) == 0:
                     if _satisfy_inequalities(replaced_constraints['inequalities'], dict(zip(syms, solved_value))):
                         solved_values.append(list(solved_value)[0:len(target_syms)])
@@ -600,8 +607,6 @@ class GeometricConfiguration:
         if len(constraint_values) == 0:
             return solved_values
 
-        # print(constraint_values)
-
         epoch = 0
         while len(solved_values) < self.max_samples and epoch < self.max_epoch:
             constraint_value = constraint_values[epoch % len(constraint_values)]
@@ -610,6 +615,8 @@ class GeometricConfiguration:
             if _satisfy_inequalities(replaced_constraints['inequalities'], sym_to_value):
                 solved_values.append(list(solved_value)[0:len(target_syms)])
             epoch += 1
+
+        # print(constraint_values)
         # print(solved_values)
         # print()
 
@@ -644,8 +651,8 @@ class GeometricConfiguration:
                 # random_y = nsimplify(random_y, tolerance=self.tolerance)
                 random_values[sym] = random_y
             elif str(sym).split('.')[1] == 'r':
-                max_distance = float(sqrt((self.range['y_max'] - self.range['y_min']) ** 2 +
-                                          (self.range['x_max'] - self.range['x_min']) ** 2)) / 2 * self.rate
+                max_distance = float(((self.range['y_max'] - self.range['y_min']) ** 2 +
+                                      (self.range['x_max'] - self.range['x_min']) ** 2) ** 0.5) / 2 * self.rate
                 random_r = random.uniform(0, max_distance)
                 # random_r = nsimplify(random_r, tolerance=self.tolerance)
                 random_values[sym] = random_r
