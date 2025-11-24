@@ -572,14 +572,21 @@ def replace_expr(expr, replace):
     replace_temp = {}
     syms = list(expr.free_symbols)
     for sym in syms:
-        entity, attr = str(sym).split('.')
-        sym_temp = symbols("".join([e if e not in replace else e + "'" for e in entity]) + '.' + attr)
-        sym_replaced = symbols("".join([e if e not in replace else replace[e] for e in entity]) + '.' + attr)
+        entities, attr = str(sym).split('.')
+
+        entities_temp = [e if e not in replace else e + "'" for e in entities]
+        sym_temp = symbols("".join(entities_temp) + '.' + attr)
+
+        entities_replaced = [e if e not in replace else replace[e] for e in entities]
+        if attr == 'dpp':
+            entities_replaced = sorted(entities_replaced)
+        sym_replaced = symbols("".join(entities_replaced) + '.' + attr)
+
         if sym_temp not in replace_temp and sym_temp != sym_replaced:
             expr = expr.replace(sym, sym_temp)
             replace_temp[sym_temp] = sym_replaced
 
-    for sym_temp in replace_temp:
+    for sym_temp in replace_temp:  # 这里可以改为subs
         expr = expr.replace(sym_temp, replace_temp[sym_temp])
 
     return expr

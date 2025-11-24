@@ -34,27 +34,32 @@ def _get_dependent_entities(predicate, instance, parsed_gdl):
     return list(set(dependent_entities))
 
 
+def _satisfy_eq(expr, sym_to_value):
+    return expr.subs(sym_to_value).evalf(n=15, chop=1e-12) == 0
+
+
 def _satisfy_g(expr, sym_to_value):
-    return expr.subs(sym_to_value).evalf(chop=True) > 0
+    return expr.subs(sym_to_value).evalf(n=15, chop=1e-12) > 0
 
 
 def _satisfy_geq(expr, sym_to_value):
-    return expr.subs(sym_to_value).evalf(chop=True) >= 0
+    return expr.subs(sym_to_value).evalf(n=15, chop=1e-12) >= 0
 
 
 def _satisfy_l(expr, sym_to_value):
-    return expr.subs(sym_to_value).evalf(chop=True) < 0
+    return expr.subs(sym_to_value).evalf(n=15, chop=1e-12) < 0
 
 
 def _satisfy_leq(expr, sym_to_value):
-    return expr.subs(sym_to_value).evalf(chop=True) <= 0
+    return expr.subs(sym_to_value).evalf(n=15, chop=1e-12) <= 0
 
 
 def _satisfy_ueq(expr, sym_to_value):
-    return expr.subs(sym_to_value).evalf(chop=True) != 0
+    return expr.subs(sym_to_value).evalf(n=15, chop=1e-12) != 0
 
 
-_satisfy_inequality = {"G": _satisfy_g, "Geq": _satisfy_geq, "L": _satisfy_l, "Leq": _satisfy_leq, "Ueq": _satisfy_ueq}
+_satisfy_inequality = {"Eq": _satisfy_g, "G": _satisfy_g, "Geq": _satisfy_geq,
+                       "L": _satisfy_l, "Leq": _satisfy_leq, "Ueq": _satisfy_ueq}
 
 
 def _satisfy_inequalities(inequalities, sym_to_value):
@@ -591,10 +596,10 @@ class GeometricConfiguration:
             constraint_values.append(syms)
         else:
             solved_results = nonlinsolve(replaced_constraints['equations'], syms)
-            print(constraints)
-            print(replaced_constraints)
-            print(syms)
-            print(solved_results)
+            # print(constraints)
+            # print(replaced_constraints)
+            # print(syms)
+            # print(solved_results)
             if type(solved_results) is not FiniteSet:
                 return solved_values
             for solved_value in list(solved_results):
