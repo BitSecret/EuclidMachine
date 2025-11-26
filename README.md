@@ -195,7 +195,7 @@ Automatic Construction of Plane Geometry System without Human Supervision.
    的距离定义为DPP(expr_x1,expr_y1,expr_x2,expr_y2)，来代替Pow(Add(Pow(Sub(expr_y2,expr_y1),2),Pow(Sub(expr_x2,expr_x1),2)),1/2)。
    扩展的代数计算：两点之间的距离DPP(expr_x1,expr_y1,expr_x2,expr_y2)、点到直线的距离DPL(expr_x,expr_y,expr_k,expr_b)、
    两线的夹角MA(expr_k1,expr_k2)、点的幂PP(expr_x,expr_y,expr_a,expr_b,expr_r)
-4. 实体参数和实数。只有实体的参数可以用于当前约束的定义，注意区分`constraints`定义的代数约束和`extend`中定义的代数关系的区别。`constraints`
+4. 实体参数和常量。只有实体的参数可以用于当前约束的定义，注意区分`constraints`定义的代数约束和`extend`中定义的代数关系的区别。`constraints`
    定义的代数约束只包含实体参数，用于构图过程；`extend`中定义的代数关系只包含实体属性，用于推理过程。
 
 使用角相等的定义说明代数约束和代数关系的区别：  

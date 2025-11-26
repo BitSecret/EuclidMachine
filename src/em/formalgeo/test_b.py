@@ -1,6 +1,7 @@
 from em.formalgeo.configuration import GeometricConfiguration
-from em.formalgeo.tools import load_json, parse_gdl, save_readable_parsed_gdl
-from em.formalgeo.tools import show, draw_geometric_figure
+from em.formalgeo.tools import load_json, parse_gdl
+from em.formalgeo.tools import show_gc, draw_gc
+from pprint import pprint
 
 
 # from sympy import symbols, sqrt, nonlinsolve
@@ -43,8 +44,8 @@ def solve(gdl, example, problem_id):
         #     exit(0)
 
     print()
-    show(gc)
-    draw_geometric_figure(gc, f'../../../data/outputs/geometric_figure_{problem_id}.png')
+    show_gc(gc)
+    draw_gc(gc, f'../../../data/outputs/geometric_figure_{problem_id}.png')
 
 
 if __name__ == '__main__':
@@ -54,9 +55,7 @@ if __name__ == '__main__':
     example_filename = '../../../data/gdl/gc-yuchang.json'
     pid = 3
 
-    save_readable_parsed_gdl(
-        parsed_gdl=parse_gdl(load_json(gdl_filename)),
-        filename='../../../data/outputs/parsed_gdl.json'
-    )
+    pprint(parse_gdl(load_json(gdl_filename)))
 
-    solve(gdl_filename, example_filename, pid)
+    # solve(gdl_filename, example_filename, pid)
+
