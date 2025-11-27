@@ -879,8 +879,6 @@ class GeometricConfiguration:
                     replace = dict(zip(a_paras, new_instance))
 
                     # check constraints
-                    print(a_paras)
-                    print(new_instance)
                     passed, premise_ids = self._pass_constraints(
                         geometric_premises, ac_checks, algebraic_premises, replace)
                     if not passed:

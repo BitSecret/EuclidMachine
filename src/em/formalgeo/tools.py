@@ -579,6 +579,15 @@ def parse_algebra(algebra_constraint):
     algebra_relation, expr_str = algebra_constraint.split("(", 1)
     expr_str = expr_str[:-1]
 
+    if '(' not in expr_str:  # such as 'Eq(lk.ma)'
+        entities = list(expr_str.split('.')[0])
+        for entity in entities:
+            if entity not in available_letters:
+                e_msg = (f"Character '{entity}' of expr '{algebra_constraint}' "
+                         f"is not in em.formalgeo.tools.letters.")
+                raise Exception(e_msg)
+        return algebra_relation, symbols(expr_str, real=True)
+
     i = 0
     j = 0
     stack = []
@@ -816,9 +825,6 @@ def draw_gc(gc, filename):
     range_x = (gc.range['x_max'] - gc.range['x_min']) / 2 * gc.rate
     middle_y = (gc.range['y_max'] + gc.range['y_min']) / 2
     range_y = (gc.range['y_max'] - gc.range['y_min']) / 2 * gc.rate
-    # print(gc.range)
-    # print(middle_x - range_x, middle_x + range_x)
-    # print(middle_y - range_y, middle_y + range_y)
     ax.set_xlim(float(middle_x - range_x), float(middle_x + range_x))
     ax.set_ylim(float(middle_y - range_y), float(middle_y + range_y))
 
