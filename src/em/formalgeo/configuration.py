@@ -7,8 +7,7 @@ import random
 
 class GeometricConfiguration:
 
-    def __init__(self, parsed_gdl, random_seed=0, max_samples=1, max_epoch=1000, rate=1.2,
-                 truncate=False, eq_truncation=5, timeout=2):
+    def __init__(self, parsed_gdl, random_seed=0, max_samples=1, max_epoch=1000, rate=1.2, timeout=2):
         """The <Configuration> class represents the construction and reasoning process of a geometric configuration.
 
         Args:
@@ -100,16 +99,14 @@ class GeometricConfiguration:
             return False.
         """
         self.parsed_gdl = parsed_gdl
-        self.letters = list(available_letters)  # available letters
+        self.letters = list(available_letters)  # available entity letters
         self.random_seed = random_seed
         random.seed(self.random_seed)
-        self.max_samples = max_samples  # 随机样本的最大数量
-        self.max_epoch = max_epoch  # 随机采样的最大次数
-        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # 点坐标的范围
-        self.rate = rate  # 随机采样时的范围扩大率
-        self.truncate = truncate  # 构建最小依赖方程组时是否截断
-        self.eq_truncation = eq_truncation  # 构建最小依赖方程组时的截断长度
-        self.timeout = timeout  # 求解代数前提的最大容忍时间
+        self.max_samples = max_samples  # Maximum number of random samples
+        self.max_epoch = max_epoch  # Maximum number of random sampling iterations
+        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # Coordinate range for points
+        self.rate = rate  # Range expansion ratio during random sampling
+        self.timeout = timeout  # Maximum tolerance time for solving algebraic premises
 
         self.facts = []  # fact_id -> (predicate, instance, premise_ids, entity_ids, operation_id)
         self.id = {}  # (predicate, instance) -> fact_id
@@ -173,6 +170,10 @@ class GeometricConfiguration:
         return True
 
     def _add_equation(self, predicate, instance, premise_ids, entity_ids, operation_id):
+        if len(instance.free_symbols) == 0:
+            return False
+        if str(instance)[0] == '-':
+            instance = - instance
         if (predicate, instance) in self.id:
             return False
 
@@ -213,10 +214,13 @@ class GeometricConfiguration:
         entity A and added to the facts.
         When using theorems with parameters, facts related to B (deleted entity) are derived; when using the
         parameterless form of theorems, no related facts are derived.
-        1.遍历所有的instances_of_predicate（除了same的），若包含B，则替换为A
-        2.遍历所有的attr_sym_to_equations，若sym包含B，替换为A，若替换后的sym有已求解的值，记录下原sym的求解值并添加到set
-        3.遍历所有的value_of_attr_sym，若sym包含B，替换为A，将A的求解值添加到set
+        The process involves three steps: First, replace B with A in all relations. Second, update symbols in
+        self.attr_sym_to_equations, replacing any B with A. Finally, apply the same substitution to
+        self.value_of_attr_sym and add A's value.
         """
+        if instance[0] == instance[1]:
+            return False
+
         instance = sorted([instance, (instance[1], instance[0])])[0]
 
         if (predicate, instance) in self.id:
@@ -875,6 +879,8 @@ class GeometricConfiguration:
                     replace = dict(zip(a_paras, new_instance))
 
                     # check constraints
+                    print(a_paras)
+                    print(new_instance)
                     passed, premise_ids = self._pass_constraints(
                         geometric_premises, ac_checks, algebraic_premises, replace)
                     if not passed:
@@ -940,17 +946,14 @@ class GeometricConfiguration:
 
     def _get_minimum_dependent_equations(self, target_expr):
         syms = [symbols('t')]
-        premise_id = []
+        equations = [syms[0] - target_expr]
+        premise_ids = []
         for sym in sorted(list(target_expr.free_symbols), key=str):  # sorting ensures reproducibility
             if sym not in self.value_of_attr_sym:
                 syms.append(sym)
             else:
-                premise_id.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
+                premise_ids.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
                 target_expr = target_expr.subs({sym: self.value_of_attr_sym[sym]})
-
-        syms_of_equations = [syms]
-        equations = [syms[0] - target_expr]
-        premise_ids = [premise_id]
 
         i = 1
         while i < len(syms):  # find all related equations
@@ -959,39 +962,16 @@ class GeometricConfiguration:
                     if self.equations[equation_id][0] in equations:
                         continue
 
-                    equations.append(self.equations[equation_id][0])
-                    syms_of_equations.append(list(self.equations[equation_id][0].free_symbols))
-                    premise_ids.append(self.equations[equation_id][2] + [self.equations[equation_id][1]])
-
-                    for sym in self.equations[equation_id][0].free_symbols:
+                    for sym in sorted(list(self.equations[equation_id][0].free_symbols), key=str):
                         if sym not in syms:
                             syms.append(sym)
+
+                    equations.append(self.equations[equation_id][0])
+                    premise_ids.append(self.equations[equation_id][1])
+                    premise_ids.extend(self.equations[equation_id][2])
             i += 1
 
-        min_syms = syms_of_equations.pop(0)  # find minimum dependent equations
-        min_equations = [equations.pop(0)]
-        min_premise_ids = premise_ids.pop(0)
-        while len(equations) > 0:
-            best_i = 0
-            best_old_sym = set(min_syms) & set(syms_of_equations[0])
-            best_new_sym = set(syms_of_equations[0]) - set(min_syms)
-            for i in range(len(equations)):
-                old_sym = set(min_syms) & set(syms_of_equations[i])
-                new_sym = set(syms_of_equations[0]) - set(min_syms)
-                if len(new_sym) < len(best_new_sym) or (len(new_sym) == len(best_new_sym) and old_sym > best_old_sym):
-                    best_i = i
-                    best_old_sym = old_sym
-                    best_new_sym = new_sym
-
-            syms_of_equations.pop(best_i)
-            min_syms.extend(best_new_sym)
-            min_equations.append(equations.pop(best_i))
-            min_premise_ids.extend(premise_ids.pop(best_i))
-
-            if len(min_equations) == len(min_syms) or len(min_equations) == self.eq_truncation:
-                return min_syms, min_equations, min_premise_ids
-
-        return min_syms, min_equations, min_premise_ids
+        return syms, equations, premise_ids
 
     def _set_value_of_attr_sym(self, sym, value, premise_ids, operation_id):
         if sym in self.value_of_attr_sym:

@@ -4,11 +4,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import re
 
-matplotlib.use('TkAgg')  # 解决后端兼容性问题
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 使用微软雅黑
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+matplotlib.use('TkAgg')  # Resolve backend compatibility issues
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # Use Microsoft YaHei font
+plt.rcParams['axes.unicode_minus'] = False  # Fix negative sign display issues
 
-"""↓------Available Entity Vocabulary and Config------↓"""
+"""↓------Available Entity Vocabulary------↓"""
 
 _lu = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
        'W', 'X', 'Y', 'Z')  # latin_upper 26
@@ -31,8 +31,8 @@ available_letters = tuple(
     list(_lu) + list(_lsu) + list(_gu) + list(_giu) + list(_ll) + list(_lsl) + list(_gl) + list(_gil)
 )
 
-"""↑------Available Entity Vocabulary and Config------↑"""
-"""↓-------------------Useful Tools-------------------↓"""
+"""↑------Available Entity Vocabulary------↑"""
+"""↓--------------Useful Tools-------------↓"""
 
 
 def load_json(filename):
@@ -690,11 +690,7 @@ def replace_expr(expr, replace):
         replace_old_to_temp[sym_old] = sym_temp
         replace_temp_to_new[sym_temp] = sym_new
 
-    expr = expr.subs(replace_old_to_temp)
-    expr = expr.subs(replace_temp_to_new)
-
-    if str(expr)[0] == '-':
-        expr = - expr
+    expr = expr.subs(replace_old_to_temp).subs(replace_temp_to_new)
 
     return expr
 
