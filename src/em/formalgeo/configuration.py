@@ -147,15 +147,15 @@ class GeometricConfiguration:
         return True
 
     def _add_relation(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        multiple_forms = [instance]
-        for indexes in self.parsed_gdl['Relations'][predicate]['multiple_forms']:
-            multiple_forms.append(tuple([instance[i] for i in indexes]))
-        instance = sorted(multiple_forms)[0]
-
         if (predicate, instance) in self.id:
             return False
 
         fact_id = self._add(predicate, instance, premise_ids, entity_ids, operation_id)
+
+        operation_id = self._add_operation('multiple_forms')
+        for indexes in self.parsed_gdl['Relations'][predicate]['multiple_forms']:
+            multiple_form = tuple([instance[i] for i in indexes])
+            fact_id = self._add(predicate, multiple_form, [fact_id], entity_ids, operation_id)
 
         replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
         operation_id = self._add_operation('auto_extend')
