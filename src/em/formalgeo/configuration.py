@@ -155,7 +155,7 @@ class GeometricConfiguration:
         operation_id = self._add_operation('multiple_forms')
         for indexes in self.parsed_gdl['Relations'][predicate]['multiple_forms']:
             multiple_form = tuple([instance[i] for i in indexes])
-            fact_id = self._add(predicate, multiple_form, [fact_id], entity_ids, operation_id)
+            self._add(predicate, multiple_form, [fact_id], entity_ids, operation_id)
 
         replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
         operation_id = self._add_operation('auto_extend')
