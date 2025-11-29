@@ -8,7 +8,7 @@ matplotlib.use('TkAgg')  # Resolve backend compatibility issues
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # Use Microsoft YaHei font
 plt.rcParams['axes.unicode_minus'] = False  # Fix negative sign display issues
 
-"""↓------Available Entity Vocabulary------↓"""
+"""↓------Vocabulary------↓"""
 
 _lu = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
        'W', 'X', 'Y', 'Z')  # latin_upper 26
@@ -27,11 +27,38 @@ _gl = ('α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'ι', 'κ', 'λ', 'μ', '
 _gil = ('𝜶', '𝜷', '𝜸', '𝜹', '𝜺', '𝜻', '𝜼', '𝜽', '𝜾', '𝜿', '𝝀', '𝝁', '𝝂', '𝝃', '𝝄', '𝝅', '𝝆', '𝝇', '𝝈', '𝝉', '𝝊', '𝝋',
         '𝝌', '𝝍', '𝝎')  # greek_italic_lower 24
 
-available_letters = tuple(
+entity_letters = tuple(  # available entity letters
     list(_lu) + list(_lsu) + list(_gu) + list(_giu) + list(_ll) + list(_lsl) + list(_gl) + list(_gil)
 )
+expr_letters = (  # letter in expr
+    '+', '-', '**', '*', '/', 'sqrt', 'atan', 'Mod',
+    'nums', 'pi',
+    '(', ')'
+)
+delimiter_letters = (  # letter distinguish between different part of fact and operation
+    '&', '|', '~', ':',
+    '<p>',  # premise
+    '<cons>',  # construction,
+    '<t>',  # theorem
+    '<c>',  # conclusion
+)
+theorem_letters = (  # preset theorem name
+    'multiple_forms', 'auto_extend', 'solve_eq', 'same_entity_extend'
+)
 
-"""↑------Available Entity Vocabulary------↑"""
+
+def get_vocab(parsed_gdl):
+    """Vocab for deep learning model."""
+    vocab = list(entity_letters)
+    vocab += list(expr_letters)
+    vocab += sorted(['.' + parsed_gdl['Measures'][measure]['sym'] for measure in parsed_gdl['Measures']])
+    vocab += list(delimiter_letters)
+    vocab += list(theorem_letters)
+    vocab += sorted(list(parsed_gdl['Theorems']))
+    return vocab
+
+
+"""↑---------------Vocabulary--------------↑"""
 """↓--------------Useful Tools-------------↓"""
 
 
@@ -215,7 +242,7 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
             raise Exception(e_msg)
         relation_multiple_forms.append(multiple_form)
 
-    letters = list(available_letters)
+    letters = list(entity_letters)
     for e in relation_paras:
         letters.remove(e)
 
@@ -540,7 +567,7 @@ def parse_fact(fact):
     paras = paras[:-1].split(',')
 
     for entity in paras:
-        if entity not in available_letters:
+        if entity not in entity_letters:
             e_msg = f"Character '{entity}' is not in em.formalgeo.tools.letters."
             raise Exception(e_msg)
 
@@ -582,7 +609,7 @@ def parse_algebra(algebra_constraint):
     if '(' not in expr_str:  # such as 'Eq(lk.ma)'
         entities = list(expr_str.split('.')[0])
         for entity in entities:
-            if entity not in available_letters:
+            if entity not in entity_letters:
                 e_msg = (f"Character '{entity}' of expr '{algebra_constraint}' "
                          f"is not in em.formalgeo.tools.letters.")
                 raise Exception(e_msg)
@@ -618,7 +645,7 @@ def parse_algebra(algebra_constraint):
                     if '.' in para:
                         entities = list(para.split('.')[0])
                         for entity in entities:
-                            if entity not in available_letters:
+                            if entity not in entity_letters:
                                 e_msg = (f"Character '{entity}' of expr '{algebra_constraint}' "
                                          f"is not in em.formalgeo.tools.letters.")
                                 raise Exception(e_msg)
@@ -848,16 +875,129 @@ def draw_gc(gc, filename):
     plt.savefig(filename)
 
 
-def get_hypergraph(gc):
-    """返回一个Json文件
-    {
-        "notes": [],  node i
-        "edges": [],  edge i
-        "dependent": [],    # node i 的 依赖实体
-        "hypergraph": [(head_node_ids,), edge_id, (tail_node_ids,)),...]
-    }
+def split_expr(expr, letters):
+    parsed_expr = []
+
+    expr = str(expr).replace(' ', '')  # remove ' '
+
+    for matched in re.findall(r'\d+\.*\d*', expr):  # replace number with 'nums'
+        expr = expr.replace(matched, 'nums', 1)
+
+    i = 0
+    while i < len(expr):  # tokenize
+        added = False
+        for matched_part in letters:  # expr letters
+            if expr[i:].startswith(matched_part):
+                parsed_expr.append(matched_part)
+                i = i + len(matched_part)
+                added = True
+                break
+        if not added:  # entity letters
+            parsed_expr.append(expr[i])
+            i = i + 1
+
+    return parsed_expr
+
+
+def split_construction(construction, letters):
+    parsed_construction = []
+
+    entity, constraints = construction.split(':')
+
+    predicate, paras = parse_fact(entity)  # parse target entity
+    parsed_construction.append(predicate)
+    parsed_construction.extend(paras)
+    parsed_construction.append(':')
+
+    for constraint in parse_disjunctive(constraints):
+        if parsed_construction[-1] != ':':
+            parsed_construction.append('&')
+
+        if (constraint.startswith('Eq(') or constraint.startswith('G(')  # parse algebraic constraint
+                or constraint.startswith('Geq(') or constraint.startswith('L(')
+                or constraint.startswith('Leq(') or constraint.startswith('Ueq(')):
+            algebra_relation, expr = parse_algebra(constraint)
+            expr = split_expr(expr, letters)
+            parsed_construction.append(algebra_relation)
+            parsed_construction.extend(expr)
+        else:  # parse predefined constraint
+            predicate, paras = parse_fact(constraint)
+            parsed_construction.append(predicate)
+            parsed_construction.extend(paras)
+
+    return parsed_construction
+
+
+def get_hypergraph(gc, serialize=False):
     """
-    pass
+    Return hypergraph (dict format).
+    If serialize=True, return serialize '<premise> <theorem> <conclusion>' (list format).
+    """
+    hypergraph = {
+        'notes': [],  # node i, node_id is same with fact_id
+        'dependent_entities': [],  # dependent entities of node i
+        'edges': [],  # edge i, node_id is not same with operation_id
+        'hypergraph': []  # (head_node_ids,), edge_id, (tail_node_ids,))
+    }
+    syms = ['.' + gc.parsed_gdl['Measures'][measure]['sym'] for measure in gc.parsed_gdl['Measures']]
+    letters = tuple(list(expr_letters) + syms)
+
+    added_edges = []
+    for fact_id in range(len(gc.facts)):
+        predicate, instance, premise_ids, entity_ids, operation_id = gc.facts[fact_id]
+
+        if predicate != 'Equation':
+            node = tuple([predicate] + list(instance))
+        else:
+            node = tuple([predicate] + split_expr(instance, letters))
+
+        hypergraph['notes'].append(node)  # add node
+        hypergraph['dependent_entities'].append(entity_ids)  # add dependent_entity
+
+        if operation_id in added_edges:
+            continue
+        added_edges.append(operation_id)
+
+        edge_id = len(hypergraph['edges'])
+        edge = gc.operations[operation_id]
+        if ':' in edge:  # construction
+            edge = tuple(split_construction(edge, letters))
+        elif edge in theorem_letters:  # theorem with no paras
+            edge = [edge]
+        else:  # theorem with paras
+            edge_predicate, edge_instance = parse_fact(edge)
+            edge = tuple([edge_predicate] + edge_instance)
+
+        hypergraph['edges'].append(edge)  # add edge
+        hypergraph['hypergraph'].append((premise_ids, edge_id, tuple(sorted(list(set(gc.groups[operation_id]))))))
+
+    if serialize:
+        serialized_hypergraph = []
+        for head_node_ids, edge_id, tail_node_ids in hypergraph['hypergraph']:
+            one_step = ['<p>']
+
+            for head_node_id in head_node_ids:  # add premise
+                if one_step[-1] != '<p>':
+                    one_step.append('&')
+                one_step.extend(hypergraph['notes'][head_node_id])
+
+            if ':' in hypergraph['edges'][edge_id]:  # add operation
+                one_step.append('<cons>')
+            else:
+                one_step.append('<t>')
+            one_step.extend(hypergraph['edges'][edge_id])
+
+            one_step.append('<c>')  # add conclusions
+            for tail_node_id in tail_node_ids:
+                if one_step[-1] != '<c>':
+                    one_step.append('|')
+                one_step.extend(hypergraph['notes'][tail_node_id])
+
+            serialized_hypergraph.append(one_step)
+
+        return serialized_hypergraph
+
+    return hypergraph
 
 
 def draw_hypergraph(gc, filename):

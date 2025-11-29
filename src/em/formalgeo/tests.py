@@ -3,8 +3,9 @@ import time
 from sympy import symbols, sqrt, nonlinsolve
 from pprint import pprint
 from em.formalgeo.configuration import GeometricConfiguration
-from em.formalgeo.tools import load_json, parse_gdl
-from em.formalgeo.tools import show_gc, draw_gc
+from em.formalgeo.tools import load_json, parse_gdl, save_json, get_vocab
+from em.formalgeo.tools import show_gc, draw_gc, get_hypergraph
+from sympy import *
 
 
 def test1():
@@ -69,6 +70,7 @@ def test2():
     print()
     show_gc(gc)
     draw_gc(gc, f'../../../data/outputs/test2_figure_{pid}.png')
+    save_json(get_hypergraph(gc, serialize=True), f'../../../data/outputs/test2_hypergraph_{pid}.json')
 
 
 def test3():
@@ -95,6 +97,18 @@ def test4():
     pprint(parse_gdl(load_json(gdl_filename)))
 
 
+def test5():
+    a, b, c, t = symbols('a b c t')
+    print(type(nonlinsolve([t - a - b, a + b], [t, a, b])), nonlinsolve([t - a - b, a + b], [t, a, b]))
+    print(type(nonlinsolve([t - a - b, t - a + b], [t, a, b])), nonlinsolve([t - a - b, t - a + b], [t, a, b]))
+    print(type(nonlinsolve([t + 1, t - 1], [t, a, b])), nonlinsolve([t + 1, t - 1], [t, a, b]))
+
+
+def test6():
+    vocab = get_vocab(parse_gdl(load_json(gdl_filename)))
+    print(len(vocab), vocab)
+
+
 # gdl_filename = '../../../data/gdl/gdl-xiaokai.json'
 gdl_filename = '../../../data/gdl/gdl-yuchang.json'
 # example_filename = '../../../data/gdl/gc-xiaokai.json'
@@ -103,3 +117,4 @@ pid = 3
 
 if __name__ == '__main__':
     test2()
+    test6()

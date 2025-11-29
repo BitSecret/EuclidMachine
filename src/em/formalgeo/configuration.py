@@ -1,6 +1,6 @@
-from em.formalgeo.tools import available_letters, satisfy_algebra, satisfy_inequalities
+from em.formalgeo.tools import entity_letters, satisfy_algebra, satisfy_inequalities
 from em.formalgeo.tools import parse_fact, parse_algebra, replace_paras, replace_expr, parse_disjunctive
-from sympy import symbols, nonlinsolve, tan, pi, FiniteSet
+from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet
 from func_timeout import func_timeout, FunctionTimedOut
 import random
 
@@ -99,7 +99,7 @@ class GeometricConfiguration:
             return False.
         """
         self.parsed_gdl = parsed_gdl
-        self.letters = list(available_letters)  # available entity letters
+        self.letters = list(entity_letters)  # available entity letters
         self.random_seed = random_seed
         random.seed(self.random_seed)
         self.max_samples = max_samples  # Maximum number of random samples
@@ -913,30 +913,43 @@ class GeometricConfiguration:
         # check algebraic premises
         for expr in algebraic_premises:
             expr = replace_expr(expr, replace)
-            syms, equations, premise_id = self._get_minimum_dependent_equations(expr)
 
+            if ('Equation', expr) in self.id:  # expr in self.facts
+                premise_ids.append(self.id[('Equation', expr)])
+                continue
+
+            syms, equations, premise_id = self._get_minimum_dependent_equations(expr)
             try:
                 solved_values = func_timeout(
                     timeout=self.timeout,
                     func=nonlinsolve,
                     args=(equations, syms)
                 )
-                solved_values = list(solved_values)
             except FunctionTimedOut:
                 return False, None
 
-            if len(solved_values) == 0:  # not current algebraic premise
+            if type(solved_values) is EmptySet:
+                e_smg = f'Equations no solution: {equations}'
+                raise Exception(e_smg)
+
+            if type(solved_values) is not FiniteSet:
                 return False, None
 
-            solved_value = solved_values[0]  # take the first solution among multiple solutions
+            solved_values = list(solved_values)
 
-            if solved_value[0] != 0:  # symbol t
-                return False, None
+            if len(solved_values) > 1:
+                for solved_value in list(solved_values):
+                    if solved_value[0] != 0:  # t must equal to 0 in every solved value
+                        return False, None
+            else:
+                solved_value = solved_values[0]
+                if solved_values[0] != 0:  # t must equal to 0
+                    return False, None
 
-            operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
-            for i in range(1, len(solved_value)):  # skip symbol t
-                if len(solved_value[i].free_symbols) == 0:
-                    self._set_value_of_attr_sym(syms[i], solved_value[i], premise_id, operation_id)
+                operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
+                for i in range(1, len(solved_value)):  # skip symbol t
+                    if len(solved_value[i].free_symbols) == 0:
+                        self._set_value_of_attr_sym(syms[i], solved_value[i], premise_id, operation_id)
 
             premise_ids += premise_id
 
