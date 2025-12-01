@@ -247,6 +247,7 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
         letters.remove(e)
 
     relation_implicit_entities = {'Point': [], 'Line': [], 'Circle': []}
+    relation_implicit_extends = []
     relation_constraints = []
     for construction in gdl['Relations'][relation]['implicit_entities']:  # add implicit constraint
         entity, constraints = construction.split(':')
@@ -287,9 +288,19 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
                 expr = replace_expr(expr, replace)
                 parsed_relation_constraints.append((algebra_relation, expr))
 
+            # merge implicit_extends
+            for implicit_name, implicit_paras in parsed_gdl['Relations'][constraint_name]['implicit_extends']:
+                if implicit_name == 'Equation':
+                    implicit_paras = replace_expr(implicit_paras, replace)
+                else:
+                    implicit_paras = tuple(replace_paras(implicit_paras, replace))
+                relation_implicit_extends.append((implicit_name, implicit_paras))
+
             # add dependent relation extends
             if len(set(constraint_paras) - set(relation_paras)) == 0:
                 relation_extends.append((constraint_name, tuple(constraint_paras)))
+            else:
+                relation_implicit_extends.append((constraint_name, tuple(constraint_paras)))
 
     relation_implicit_entities['Point'] = tuple(relation_implicit_entities['Point'])
     relation_implicit_entities['Line'] = tuple(relation_implicit_entities['Line'])
@@ -301,6 +312,7 @@ def _parse_one_relation(relation, gdl, parsed_gdl):
         'ee_checks': relation_ee_checks,
         'multiple_forms': tuple(relation_multiple_forms),
         'extends': tuple(relation_extends),
+        'implicit_extends': tuple(relation_implicit_extends),
         'implicit_entities': relation_implicit_entities,
         'constraints': tuple(parsed_relation_constraints)
     }
@@ -597,7 +609,7 @@ def parse_algebra(algebra_constraint):
 
     Returns:
         parsed_algebra_constraint (tuple): Algebra relation type and instance of sympy expression. Such as:
-        (('Eq', -A.x*l.k + A.y - l.b)), ('G', -(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)).
+        ('Eq', -A.x*l.k + A.y - l.b), ('G', -(A.x - B.x)*(-B.y + C.y) + (A.y - B.y)*(-B.x + C.x)).
     """
     if ' ' in algebra_constraint:
         e_msg = f"The format of '{algebra_constraint}' is incorrect. Spaces are not allowed in it's definition."
@@ -746,10 +758,54 @@ def parse_disjunctive(general_form):  # 过几天在搞
 
 
 def show_gc(gc, target=None):
-    used_operation_ids = set()
-    used_premise_ids = set()
+    operation_ids = set()
+    used_operation_ids = []
+    used_premise_ids = []
     if target is not None:
-        pass
+        if target.startswith('Eq'):
+            predicate = 'Equation'
+            _, instance = parse_algebra(target)
+            if str(instance)[0] == '-':
+                instance = -instance
+        else:
+            predicate, instance = parse_fact(target)
+            instance = tuple(instance)
+
+        if (predicate, instance) in gc.id:
+            used_premise_ids.append(gc.id[(predicate, instance)])
+
+        i = 0
+        while i < len(used_premise_ids):
+            for fact_id in gc.facts[used_premise_ids[i]][2]:
+                if fact_id in used_premise_ids:
+                    continue
+                used_premise_ids.append(fact_id)
+            if gc.facts[used_premise_ids[i]][4] not in used_operation_ids:
+                used_operation_ids.append(gc.facts[used_premise_ids[i]][4])
+            i += 1
+
+    entity_print_format = '{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}{5:<30}'
+    relation_print_format = '{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}'
+    equation_print_format = "{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}"
+    sym_print_format = '{0:<6}{1:<25}{2:<25}{3:<6}'
+    operation_print_format = '{0:<6}{1:<50}'
+
+    entity_print_format_used = '\033[35m{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}{5:<30}\033[0m'
+    relation_print_format_used = '\033[35m{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}\033[0m'
+    equation_print_format_used = '\033[35m{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}\033[0m'
+    operation_print_format_used = '\033[35m{0:<6}{1:<50}\033[0m'
+
+    print("\033[33mConstructions:\033[0m")
+    for operation_id in gc.constructions:
+        print('{0:<4}{1:<40}'.format(operation_id, gc.operations[operation_id]))
+        implicit_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][0]]
+        print(f'    target entities: {implicit_entities}')
+        implicit_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][1]]
+        print(f'    implicit entities: {implicit_entities}')
+        dependent_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][2]]
+        print(f'    dependent entities: {dependent_entities}')
+        print(f"    constraints: {str(gc.constructions[operation_id][3]).replace(' ', '')}")
+    print()
 
     print('\033[33mEntities:\033[0m')
     for entity in ['Point', 'Line', 'Circle']:
@@ -757,7 +813,7 @@ def show_gc(gc, target=None):
             continue
         print(f'{entity}:')
         for fact_id in gc.ids_of_predicate[entity]:
-            used_operation_ids.add(gc.facts[fact_id][4])
+            operation_ids.add(gc.facts[fact_id][4])
             if entity == 'Point':
                 values = [(round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1][0]}.x')]), 4),
                            round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1][0]}.y')]), 4))]
@@ -768,26 +824,24 @@ def show_gc(gc, target=None):
                 values = [(round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1][0]}.cx')]), 4),
                            round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1][0]}.cy')]), 4),
                            round(float(gc.value_of_para_sym[symbols(f'{gc.facts[fact_id][1][0]}.r')]), 4))]
-            print('{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}{5:<30}'.format(
-                fact_id,
-                gc.facts[fact_id][1][0],
-                str(gc.facts[fact_id][2]).replace(' ', ''),
-                str(gc.facts[fact_id][3]).replace(' ', ''),
-                gc.facts[fact_id][4],
-                str(values).replace(' ', '')
-            ))
-    print()
-
-    print("\033[33mConstructions:\033[0m")
-    for operation_id in gc.constructions:
-        print('{0:<4}{1:<40}'.format(operation_id, gc.operations[operation_id]))
-        target_predicate, target_entity = gc.constructions[operation_id][0]
-        print(f'    target entity: {target_predicate}({target_entity})')
-        implicit_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][1]]
-        print(f'    implicit entities: {implicit_entities}')
-        dependent_entities = [f'{p}({i})' for p, i in gc.constructions[operation_id][2]]
-        print(f'    dependent entities: {dependent_entities}')
-        print(f"    constraints: {str(gc.constructions[operation_id][3]).replace(' ', '')}")
+            if fact_id in used_premise_ids:
+                print(entity_print_format_used.format(
+                    fact_id,
+                    gc.facts[fact_id][1][0],
+                    str(gc.facts[fact_id][2]).replace(' ', ''),
+                    str(gc.facts[fact_id][3]).replace(' ', ''),
+                    gc.facts[fact_id][4],
+                    str(values).replace(' ', '')
+                ))
+            else:
+                print(entity_print_format.format(
+                    fact_id,
+                    gc.facts[fact_id][1][0],
+                    str(gc.facts[fact_id][2]).replace(' ', ''),
+                    str(gc.facts[fact_id][3]).replace(' ', ''),
+                    gc.facts[fact_id][4],
+                    str(values).replace(' ', '')
+                ))
     print()
 
     print("\033[33mRelations:\033[0m")
@@ -798,26 +852,44 @@ def show_gc(gc, target=None):
             continue
         print(f"{predicate}:")
         for fact_id in gc.ids_of_predicate[predicate]:
-            used_operation_ids.add(gc.facts[fact_id][4])
-            print("{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}".format(
-                fact_id,
-                ','.join(gc.facts[fact_id][1]),
-                str(gc.facts[fact_id][2]).replace(' ', ''),
-                str(gc.facts[fact_id][3]).replace(' ', ''),
-                gc.facts[fact_id][4]
-            ))
+            operation_ids.add(gc.facts[fact_id][4])
+            if fact_id in used_premise_ids:
+                print(relation_print_format_used.format(
+                    fact_id,
+                    ','.join(gc.facts[fact_id][1]),
+                    str(gc.facts[fact_id][2]).replace(' ', ''),
+                    str(gc.facts[fact_id][3]).replace(' ', ''),
+                    gc.facts[fact_id][4]
+                ))
+            else:
+                print(relation_print_format.format(
+                    fact_id,
+                    ','.join(gc.facts[fact_id][1]),
+                    str(gc.facts[fact_id][2]).replace(' ', ''),
+                    str(gc.facts[fact_id][3]).replace(' ', ''),
+                    gc.facts[fact_id][4]
+                ))
     print()
 
     print("\033[33mEquations:\033[0m")
     for fact_id in gc.ids_of_predicate['Equation']:
-        used_operation_ids.add(gc.facts[fact_id][4])
-        print("{0:<6}{1:<15}{2:<60}{3:<60}{4:<6}".format(
-            fact_id,
-            str(gc.facts[fact_id][1]).replace(' ', ''),
-            str(gc.facts[fact_id][2]).replace(' ', ''),
-            str(gc.facts[fact_id][3]).replace(' ', ''),
-            gc.facts[fact_id][4]
-        ))
+        operation_ids.add(gc.facts[fact_id][4])
+        if fact_id in used_premise_ids:
+            print(equation_print_format_used.format(
+                fact_id,
+                str(gc.facts[fact_id][1]).replace(' ', ''),
+                str(gc.facts[fact_id][2]).replace(' ', ''),
+                str(gc.facts[fact_id][3]).replace(' ', ''),
+                gc.facts[fact_id][4]
+            ))
+        else:
+            print(equation_print_format.format(
+                fact_id,
+                str(gc.facts[fact_id][1]).replace(' ', ''),
+                str(gc.facts[fact_id][2]).replace(' ', ''),
+                str(gc.facts[fact_id][3]).replace(' ', ''),
+                gc.facts[fact_id][4]
+            ))
     print()
 
     print("\033[33mSymbols and Values:\033[0m")
@@ -825,7 +897,7 @@ def show_gc(gc, target=None):
         equation_id = gc.id['Equation', sym - gc.value_of_attr_sym[sym]]
         predicate = gc.parsed_gdl['sym_to_measure'][str(sym).split('.')[1]]
         instance = ",".join(list(str(sym).split('.')[0]))
-        print("{0:<6}{1:<25}{2:<25}{3:<6}".format(
+        print(sym_print_format.format(
             equation_id,
             f"{predicate}({instance})",
             str(sym),
@@ -834,13 +906,19 @@ def show_gc(gc, target=None):
     print()
 
     print("\033[33mOperations:\033[0m")
-    for i in range(len(gc.operations)):
-        if i not in used_operation_ids:
+    for operation_id in range(len(gc.operations)):
+        if operation_id not in operation_ids:
             continue
-        print("{0:<6}{1:<50}".format(
-            i,
-            f'{gc.operations[i]}'
-        ))
+        if operation_id in used_operation_ids:
+            print(operation_print_format_used.format(
+                operation_id,
+                f'{gc.operations[operation_id]}'
+            ))
+        else:
+            print(operation_print_format.format(
+                operation_id,
+                f'{gc.operations[operation_id]}'
+            ))
     print()
 
 
@@ -936,8 +1014,8 @@ def get_hypergraph(gc, serialize=False):
     hypergraph = {
         'notes': [],  # node i, node_id is same with fact_id
         'dependent_entities': [],  # dependent entities of node i
-        'edges': [],  # edge i, node_id is not same with operation_id
-        'hypergraph': []  # (head_node_ids,), edge_id, (tail_node_ids,))
+        'edges': [],  # edge i, edge_id is not same with operation_id
+        'hypergraph': []  # ((head_node_ids,), edge_id, (tail_node_ids,))
     }
     syms = ['.' + gc.parsed_gdl['Measures'][measure]['sym'] for measure in gc.parsed_gdl['Measures']]
     letters = tuple(list(expr_letters) + syms)

@@ -1,11 +1,11 @@
 import copy
 import time
 from sympy import symbols, sqrt, nonlinsolve
-from pprint import pprint
 from em.formalgeo.configuration import GeometricConfiguration
 from em.formalgeo.tools import load_json, parse_gdl, save_json, get_vocab
 from em.formalgeo.tools import show_gc, draw_gc, get_hypergraph
 from sympy import *
+from pprint import pprint
 
 
 def test1():
@@ -68,9 +68,10 @@ def test2():
         #     exit(0)
 
     print()
-    show_gc(gc)
+    show_gc(gc, target=example['targets'][0])
     draw_gc(gc, f'../../../data/outputs/test2_figure_{pid}.png')
-    save_json(get_hypergraph(gc, serialize=True), f'../../../data/outputs/test2_hypergraph_{pid}.json')
+    save_json(get_hypergraph(gc), f'../../../data/outputs/test2_hypergraph_{pid}.json')
+    save_json(get_hypergraph(gc, serialize=True), f'../../../data/outputs/test2_serialized_hypergraph_{pid}.json')
 
 
 def test3():
@@ -109,6 +110,28 @@ def test6():
     print(len(vocab), vocab)
 
 
+def test7():
+    a, b = symbols('a b')
+    result_a = nonlinsolve([a - 3, a + 2], [a])
+    result_b = nonlinsolve([b - 3], [b])
+    print("result_a:", result_a)
+    print("type(result_a):", type(result_a))
+    print("type(EmptySet):", type(EmptySet))
+    print("result_a is EmptySet:", result_a is EmptySet)
+    print("result_a is FiniteSet:", result_a is FiniteSet)
+    print("type(result_a) is EmptySet:", type(result_a) is EmptySet)
+    print("type(result_a) is type(EmptySet):", type(result_a) is type(EmptySet))
+    print("type(result_a) == type(EmptySet):", type(result_a) == type(EmptySet))
+    print()
+    print("result_b:", result_b)
+    print("type(result_b):", type(result_b))
+    print("type(FiniteSet):", type(FiniteSet))
+    print("result_b is FiniteSet:", result_b is FiniteSet)
+    print("type(result_b) is FiniteSet:", type(result_b) is FiniteSet)
+    print("type(result_b) is type(FiniteSet):", type(result_b) is type(FiniteSet))
+    print("type(result_b) == type(FiniteSet):", type(result_b) == type(FiniteSet))
+
+
 # gdl_filename = '../../../data/gdl/gdl-xiaokai.json'
 gdl_filename = '../../../data/gdl/gdl-yuchang.json'
 # example_filename = '../../../data/gdl/gc-xiaokai.json'
@@ -117,4 +140,6 @@ pid = 3
 
 if __name__ == '__main__':
     test2()
-    test6()
+    # test6()
+    # test4()
+    # test7()

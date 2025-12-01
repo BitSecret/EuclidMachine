@@ -140,7 +140,7 @@ class GeometricConfiguration:
         if (predicate, instance) in self.id:
             return False
 
-        self._add(predicate, instance, premise_ids, entity_ids, operation_id)
+        self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
 
         self.entity_map[instance[0]] = predicate
 
@@ -150,12 +150,12 @@ class GeometricConfiguration:
         if (predicate, instance) in self.id:
             return False
 
-        fact_id = self._add(predicate, instance, premise_ids, entity_ids, operation_id)
+        fact_id = self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
 
         operation_id = self._add_operation('multiple_forms')
         for indexes in self.parsed_gdl['Relations'][predicate]['multiple_forms']:
             multiple_form = tuple([instance[i] for i in indexes])
-            self._add(predicate, multiple_form, [fact_id], entity_ids, operation_id)
+            self._add_fact(predicate, multiple_form, [fact_id], entity_ids, operation_id)
 
         replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
         operation_id = self._add_operation('auto_extend')
@@ -177,7 +177,7 @@ class GeometricConfiguration:
         if (predicate, instance) in self.id:
             return False
 
-        fact_id = self._add(predicate, instance, premise_ids, entity_ids, operation_id)
+        fact_id = self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
 
         if self.operations[operation_id] in ['solve_eq', 'same_entity_extend']:
             return True
@@ -226,7 +226,7 @@ class GeometricConfiguration:
         if (predicate, instance) in self.id:
             return False
 
-        fact_id = self._add(predicate, instance, premise_ids, entity_ids, operation_id)
+        fact_id = self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
 
         A, B = instance
 
@@ -282,7 +282,7 @@ class GeometricConfiguration:
 
         return True
 
-    def _add(self, predicate, instance, premise_ids, entity_ids, operation_id):
+    def _add_one(self, predicate, instance, premise_ids, entity_ids, operation_id):
         fact_id = len(self.facts)
         premise_ids = tuple(sorted(list(set(premise_ids))))
         entity_ids = tuple(sorted(list(set(entity_ids))))
@@ -337,9 +337,8 @@ class GeometricConfiguration:
         # add entity to self.operations
         operation_id = self._add_operation(construction)
 
-        t_entity, i_entities, d_entities, p_constraints, added_facts = self._parse_construction(construction, letters)
-        constraints = self._merge_constraints(i_entities, p_constraints, letters)
-        solved_values = self._solve_constraints(t_entity, i_entities, constraints)
+        t_entities, d_entities, constraints, added_facts = self._parse_construction(construction, letters)
+        solved_values = self._solve_constraints(t_entities, constraints)
 
         if len(solved_values) == 0:  # no solved entity
             return False
@@ -350,25 +349,42 @@ class GeometricConfiguration:
         premise_ids = tuple(premise_ids)
 
         # add target_entities to self.facts
-        self._add_fact(t_entity[0], t_entity[1], premise_ids, premise_ids, operation_id)
+        for target_entity in t_entities:
+            self._add_entity(target_entity[0], target_entity[1], premise_ids, premise_ids, operation_id)
+            self.letters.remove(target_entity[1][0])  # update self.letters
 
         # set entity's parameter to solved value
-        syms = self._get_para_sym_of_entities([t_entity])
+        target_syms = self._get_para_sym_of_entities(t_entities)
         solved_value = solved_values.pop(0)
-        self._set_values_of_para_syms(t_entity[0], syms, solved_value)
+        for i in range(len(target_syms)):
+            self.value_of_para_sym[target_syms[i]] = solved_value[i]
+        self._update_range(t_entities)
 
         # add relation to self.facts
         for predicate, instance in added_facts:
             entity_ids = tuple(self._get_entity_ids(predicate, instance))
             self._add_fact(predicate, instance, premise_ids, entity_ids, operation_id)
 
-        # add (t_entity, i_entities, d_entities, constraints, solved_values) to self.constructions
-        self.constructions[operation_id] = (t_entity, i_entities, d_entities, constraints, tuple(solved_values))
-
-        # update self.letters
-        self.letters.remove(t_entity[1][0])
+        # add (t_entities, d_entities, constraints, solved_values) to self.constructions
+        self.constructions[operation_id] = (t_entities, d_entities, constraints, tuple(solved_values))
 
         return True
+
+    def _update_range(self, new_entities):
+        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}
+        for predicate, instance in new_entities:
+            if predicate != 'Point':
+                continue
+            x = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['XOfPoint']['sym']}")
+            y = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['YOfPoint']['sym']}")
+            if self.value_of_para_sym[x] > self.range['x_max']:
+                self.range['x_max'] = self.value_of_para_sym[x]
+            if self.value_of_para_sym[x] < self.range['x_min']:
+                self.range['x_min'] = self.value_of_para_sym[x]
+            if self.value_of_para_sym[y] > self.range['y_max']:
+                self.range['y_max'] = self.value_of_para_sym[y]
+            if self.value_of_para_sym[y] < self.range['y_min']:
+                self.range['y_min'] = self.value_of_para_sym[y]
 
     def _parse_construction(self, construction, letters):
         target_entity, constraints = construction.split(':')
@@ -378,7 +394,6 @@ class GeometricConfiguration:
         implicit_entities = []  # (predicate, entity)
         dependent_entities = []  # (predicate, entity)
         parsed_constraints = []  # (predicate, instance)
-        added_facts = []  # # (predicate, instance)
 
         if target_predicate not in ['Point', 'Line', 'Circle']:
             e_msg = f"Incorrect entity type: '{target_predicate}'. Expected: 'Point', 'Line' and 'Circle'."
@@ -423,10 +438,12 @@ class GeometricConfiguration:
                     raise Exception(e_msg)
 
                 if constraint_name in {'FreePoint', 'FreeLine', 'FreeCircle'}:  # Free entity
-                    return target_entity, implicit_entities, dependent_entities, parsed_constraints, added_facts
+                    if constraint_paras[0] != target_paras[0]:
+                        e_msg = f"Target entity {target_entity} not in the constraint '{constraint}'."
+                        raise Exception(e_msg)
+                    return [target_entity], [], [], [(constraint_name, tuple(constraint_paras))]
 
                 has_target_entity = False
-                has_implicit_entity = False
                 for i in range(len(constraint_paras)):  # parse constraint
                     predicate = self.parsed_gdl['Relations'][constraint_name]["ee_checks"][i]
 
@@ -441,14 +458,11 @@ class GeometricConfiguration:
                         elif dependent_entity not in dependent_entities:
                             dependent_entities.append(dependent_entity)
                     else:  # temporary form
-                        has_implicit_entity = True
-
                         has_target_entity_temp, implicit_entity = self._parse_temporary_entity(
                             predicate, constraint_paras[i], target_entity, letters,
                             implicit_entities, dependent_entities, parsed_constraints
                         )
                         constraint_paras[i] = implicit_entity  # set it to norm form
-
                         has_target_entity = has_target_entity_temp or has_target_entity
 
                 if not has_target_entity:
@@ -457,10 +471,41 @@ class GeometricConfiguration:
 
                 parsed_constraints.append((constraint_name, tuple(constraint_paras)))
 
-                if not has_implicit_entity:
-                    added_facts.append((constraint_name, tuple(constraint_paras)))
+        constraints = []  # (algebra_relation, expr)
+        added_facts = []  # (predicate, instance)
+        for predicate, instance in parsed_constraints:
+            if type(instance) is not tuple:
+                constraints.append((predicate, instance))
+            else:
+                added_facts.append((predicate, instance))  # add current constraint
+                relation = self.parsed_gdl['Relations'][predicate]
+                replace = dict(zip(relation['paras'], instance))
 
-        return target_entity, implicit_entities, dependent_entities, parsed_constraints, added_facts
+                # add implicit entities
+                for implicit_predicate in relation['implicit_entities']:
+                    for implicit_instance in relation['implicit_entities'][implicit_predicate]:
+                        if implicit_instance in letters:
+                            implicit_entities.append((implicit_predicate, (implicit_instance,)))
+                            letters.remove(implicit_instance)
+                        else:
+                            replaced_instance = letters.pop(0)
+                            replace[implicit_instance] = replaced_instance
+                            implicit_entities.append((implicit_predicate, (replaced_instance,)))
+
+                # merge fact: add constraint's implicit extends
+                for implicit_predicate, implicit_instance in relation['implicit_extends']:
+                    if implicit_predicate == 'Equation':
+                        implicit_instance = replace_expr(implicit_instance, replace)
+                    else:
+                        implicit_instance = tuple(replace_paras(implicit_instance, replace))
+                    added_facts.append((implicit_predicate, implicit_instance))
+
+                # merge constraints
+                for algebra_relation, expr in relation['constraints']:
+                    expr = replace_expr(expr, replace)
+                    constraints.append((algebra_relation, expr))
+
+        return [target_entity] + implicit_entities, dependent_entities, constraints, added_facts
 
     def _parse_temporary_entity(self, predicate, temporary_entity, target_entity, letters,
                                 implicit_entities, dependent_entities, parsed_constraints):
@@ -558,35 +603,7 @@ class GeometricConfiguration:
             e_msg = f"Incorrect temporary form '{temporary_entity}' for '{predicate}'."
             raise Exception(e_msg)
 
-    def _merge_constraints(self, implicit_entities, parsed_constraints, letters):
-        constraints = []  # (algebra_relation, expr)
-
-        for predicate, instance in parsed_constraints:
-            if type(instance) is not tuple:
-                constraints.append((predicate, instance))
-            else:
-                relation = self.parsed_gdl['Relations'][predicate]
-                replace = dict(zip(relation['paras'], instance))
-
-                # add implicit entities
-                for implicit_predicate in relation['implicit_entities']:
-                    for implicit_instance in relation['implicit_entities'][implicit_predicate]:
-                        if implicit_instance in letters:
-                            implicit_entities.append((implicit_predicate, (implicit_instance,)))
-                            letters.remove(implicit_instance)
-                        else:
-                            replaced_instance = letters.pop(0)
-                            replace[implicit_instance] = replaced_instance
-                            implicit_entities.append((implicit_predicate, (replaced_instance,)))
-
-                # merge constraints
-                for algebra_relation, expr in relation['constraints']:
-                    expr = replace_expr(expr, replace)
-                    constraints.append((algebra_relation, expr))
-
-        return constraints
-
-    def _solve_constraints(self, target_entity, implicit_entities, constraints):
+    def _solve_constraints(self, target_entities, constraints):
         solved_values = []  # list of values, such as [[1, 0.5], [1.5, 0.5]]
         constraint_values = []  # list of constraint values, contains symbols, such as [[y, y - 1], [x, 0.5]]
 
@@ -600,12 +617,11 @@ class GeometricConfiguration:
             else:
                 replaced_inequalities.append((algebra_relation, expr))
 
-        target_syms = self._get_para_sym_of_entities([target_entity])
-        syms = target_syms + self._get_para_sym_of_entities(implicit_entities)
-        if len(replaced_equations) == 0:  # free point
-            constraint_values.append(syms)
+        target_syms = self._get_para_sym_of_entities(target_entities)
+        if len(replaced_equations) == 0:  # free entity
+            constraint_values.append(target_syms)
         else:
-            solved_results = nonlinsolve(replaced_equations, syms)
+            solved_results = nonlinsolve(replaced_equations, target_syms)
             if type(solved_results) is not FiniteSet:
                 return solved_values
 
@@ -615,10 +631,9 @@ class GeometricConfiguration:
                     if len(item.free_symbols) > 0:
                         has_free_symbol = True
                         break
-                if has_free_symbol:  # has free symbols
+                if has_free_symbol:  # has free sym
                     constraint_values.append(solved_value)
-                elif satisfy_inequalities(replaced_inequalities, dict(zip(syms, solved_value))):  # no free symbols
-                    solved_value = list(solved_value)[0:len(target_syms)]
+                elif satisfy_inequalities(replaced_inequalities, dict(zip(target_syms, solved_value))):  # no free sym
                     solved_values.append([value.evalf(n=15, chop=False) for value in solved_value])
 
         if len(constraint_values) == 0:
@@ -627,10 +642,10 @@ class GeometricConfiguration:
         epoch = 0
         while len(solved_values) < self.max_samples and epoch < self.max_epoch:  # random sampling
             constraint_value = constraint_values[epoch % len(constraint_values)]
-            solved_value = self._random_value(syms, constraint_value)
-            sym_to_value = dict(zip(syms, solved_value))
+            solved_value = self._random_value(target_syms, constraint_value)
+            sym_to_value = dict(zip(target_syms, solved_value))
             if satisfy_inequalities(replaced_inequalities, sym_to_value):
-                solved_values.append(solved_value[0:len(target_syms)])
+                solved_values.append(solved_value)
             epoch += 1
 
         return solved_values
@@ -927,8 +942,7 @@ class GeometricConfiguration:
                 )
             except FunctionTimedOut:
                 return False, None
-
-            if type(solved_values) is EmptySet:
+            if solved_values is EmptySet:
                 e_smg = f'Equations no solution: {equations}'
                 raise Exception(e_smg)
 
@@ -943,13 +957,23 @@ class GeometricConfiguration:
                         return False, None
             else:
                 solved_value = solved_values[0]
-                if solved_values[0] != 0:  # t must equal to 0
+                if solved_value[0] != 0:  # t must equal to 0
                     return False, None
 
-                operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
-                for i in range(1, len(solved_value)):  # skip symbol t
-                    if len(solved_value[i].free_symbols) == 0:
-                        self._set_value_of_attr_sym(syms[i], solved_value[i], premise_id, operation_id)
+            operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
+            for j in range(1, len(syms)):  # skip symbol t
+                if len(solved_values[0][j].free_symbols) != 0:  # no numeric solution
+                    continue
+
+                same = True
+                for i in range(1, len(solved_values)):
+                    if solved_values[i][j] != solved_values[0][j]:
+                        same = False
+                        break
+                if not same:  # numeric solution not same in every solved result
+                    continue
+
+                self._set_value_of_attr_sym(syms[j], solved_values[0][j], premise_id, operation_id)
 
             premise_ids += premise_id
 
@@ -998,20 +1022,6 @@ class GeometricConfiguration:
         self.attr_sym_to_equations.pop(sym)
 
         return added
-
-    def _set_values_of_para_syms(self, predicate, syms, values):
-        for i in range(len(syms)):
-            self.value_of_para_sym[syms[i]] = values[i]
-
-        if predicate == 'Point':
-            if self.value_of_para_sym[syms[0]] > self.range['x_max']:
-                self.range['x_max'] = self.value_of_para_sym[syms[0]]
-            if self.value_of_para_sym[syms[0]] < self.range['x_min']:
-                self.range['x_min'] = self.value_of_para_sym[syms[0]]
-            if self.value_of_para_sym[syms[1]] > self.range['y_max']:
-                self.range['y_max'] = self.value_of_para_sym[syms[1]]
-            if self.value_of_para_sym[syms[1]] < self.range['y_min']:
-                self.range['y_min'] = self.value_of_para_sym[syms[1]]
 
     def _add_conclusions(self, conclusions, replace, premise_ids, operation_id):
         add_new_fact = False
