@@ -435,35 +435,18 @@ def _parse_one_theorem(theorem, gdl, parsed_gdl):
     products.sort(key=len, reverse=True)
 
     gpl = []
-
-    predicate = products[0][0]  # the first item
-    paras = products[0][1]
-    added_paras = list(paras)
-
-    # fact internal constraints. SameAngle(a,l,l,b) has constraint position 1 = position 2.
-    same_index = []
-    for i in range(len(paras)):
-        for j in range(i + 1, len(paras)):
-            if paras[i] == paras[j]:
-                same_index.append((i, j))
-
-    ac_checks = _get_ac_checks(theorem_ac_checks, added_paras)  # (relation_type, expr)
-    geometric_premises = _get_geometric_premises(theorem_geometric_premises, added_paras)  # (predicate, paras)
-    algebraic_premises = _get_algebraic_premises(theorem_algebraic_premises, added_paras)  # (expr)
-
-    gpl.append({
-        "product": (predicate, paras, tuple(same_index)),
-        "ac_checks": ac_checks,
-        "geometric_premises": geometric_premises,
-        "algebraic_premises": algebraic_premises
-    })
-
-    for predicate, paras in products[1:]:
-        same_index = []
+    added_paras = []
+    for predicate, paras in products:
+        inherent_same_index = []
+        for i in range(len(paras)):
+            for j in range(i + 1, len(paras)):
+                if paras[i] == paras[j]:
+                    inherent_same_index.append((i, j))
+        mutual_same_index = []
         for i in range(len(added_paras)):
             for j in range(len(paras)):
                 if added_paras[i] == paras[j]:
-                    same_index.append((i, j))
+                    mutual_same_index.append((i, j))
         added_index = []
         for j in range(len(paras)):
             if paras[j] not in added_paras:
@@ -471,13 +454,11 @@ def _parse_one_theorem(theorem, gdl, parsed_gdl):
                 added_paras.append(paras[j])
 
         ac_checks = _get_ac_checks(theorem_ac_checks, added_paras)  # (relation_type, expr)
-
         geometric_premises = _get_geometric_premises(theorem_geometric_premises, added_paras)  # (predicate, paras)
-
         algebraic_premises = _get_algebraic_premises(theorem_algebraic_premises, added_paras)  # (expr)
 
         gpl.append({
-            "product": (predicate, paras, tuple(same_index), tuple(added_index)),
+            "product": (predicate, paras, tuple(inherent_same_index), tuple(mutual_same_index), tuple(added_index)),
             "ac_checks": ac_checks,
             "geometric_premises": geometric_premises,
             "algebraic_premises": algebraic_premises

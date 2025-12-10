@@ -825,89 +825,63 @@ class GeometricConfiguration:
         return added
 
     def _run_gpl(self, gpl):
-        gpl_one_term = gpl[0]
-        product = gpl_one_term['product']
-        ac_checks = gpl_one_term['ac_checks']
-        geometric_premises = gpl_one_term['geometric_premises']
-        algebraic_premises = gpl_one_term['algebraic_premises']
-        predicate = product[0]
-        paras = product[1]
-        same_index = product[2]
+        paras = []
+        instances = [[]]
+        premise_ids = [[]]
 
-        a_paras = list(paras)
-        a_instances = []
-        a_premise_ids = []
-        for i in range(len(self.instances_of_predicate[predicate])):
-            # check same index constraint
-            pass_same_index = True
-            for i_a, j_a in same_index:
-                if self.instances_of_predicate[predicate][i][i_a] != self.instances_of_predicate[predicate][i][j_a]:
-                    pass_same_index = False
-                    break
-            if not pass_same_index:
-                continue
+        for gpl_one_term in gpl:
+            product = gpl_one_term['product']  # (predicate, paras, inherent_same_index, mutual_same_index, added_index)
+            ac_checks = gpl_one_term['ac_checks']  # [(relation_type, expr)]
+            geometric_premises = gpl_one_term['geometric_premises']  # [(predicate, paras)]
+            algebraic_premises = gpl_one_term['algebraic_premises']  # [expr]
 
-            replace = dict(zip(a_paras, self.instances_of_predicate[predicate][i]))
-
-            # check constraints
-            passed, premise_ids = self._pass_constraints(
-                geometric_premises, ac_checks, algebraic_premises, replace)
-            if not passed:
-                continue
-
-            premise_ids.append(self.ids_of_predicate[predicate][i])
-            a_instances.append(list(self.instances_of_predicate[predicate][i]))
-            a_premise_ids.append(premise_ids)
-
-        for gpl_one_term in gpl[1:]:
-            product = gpl_one_term['product']
-            ac_checks = gpl_one_term['ac_checks']
-            geometric_premises = gpl_one_term['geometric_premises']
-            algebraic_premises = gpl_one_term['algebraic_premises']
-            predicate = product[0]
-            paras = product[1]
-            same_index = product[2]
-            add_index = product[3]
-
-            a_paras.extend([paras[p_i] for p_i in add_index])
             new_instances = []
             new_premise_ids = []
-
-            for i in range(len(a_instances)):
-                for j in range(len(self.instances_of_predicate[predicate])):
-                    a_instance = a_instances[i]
-                    b_instance = self.instances_of_predicate[predicate][j]
-
-                    # constrained cartesian product: check same index constraint
+            paras.extend([product[1][j] for j in product[4]])
+            for k in range(len(instances)):
+                instance = instances[k]
+                for product_instance in self.instances_of_predicate[product[0]]:
+                    # check inherent same index constraint
                     passed = True
-                    for i_a, i_b in same_index:
-                        if a_instance[i_a] != b_instance[i_b]:
+                    for i, j in product[2]:
+                        if product_instance[i] != product_instance[j]:
+                            passed = False
+                            break
+                    if not passed:
+                        continue
+
+                    # check mutual same index constraint
+                    passed = True
+                    for i, j in product[3]:
+                        if instance[i] != product_instance[j]:
                             passed = False
                             break
                     if not passed:
                         continue
 
                     # constrained cartesian product: add different letter
-                    new_instance = list(a_instance)
-                    new_instance.extend([b_instance[i_b] for i_b in add_index])
+                    new_instance = list(instance)
+                    new_instance.extend([product_instance[j] for j in product[4]])
 
-                    replace = dict(zip(a_paras, new_instance))
+                    replace = dict(zip(paras, new_instance))
 
                     # check constraints
-                    passed, premise_ids = self._pass_constraints(
+                    passed, constraints_premise_id = self._pass_constraints(
                         geometric_premises, ac_checks, algebraic_premises, replace)
                     if not passed:
                         continue
 
-                    new_premise_id = list(a_premise_ids[i])
-                    new_premise_id.append(self.id[(predicate, b_instance)])
-                    new_premise_id.extend(premise_ids)
+                    new_premise_id = list(premise_ids[k])
+                    new_premise_id.append(self.id[(product[0], product_instance)])
+                    new_premise_id.extend(constraints_premise_id)
+
                     new_instances.append(new_instance)
                     new_premise_ids.append(new_premise_id)
 
-            a_instances = new_instances
-            a_premise_ids = new_premise_ids
-        return a_paras, a_instances, a_premise_ids
+            instances = new_instances
+            premise_ids = new_premise_ids
+
+        return paras, instances, premise_ids
 
     def _pass_constraints(self, geometric_premises, ac_checks, algebraic_premises, replace):
         premise_ids = []

@@ -132,6 +132,10 @@ def test7():
     print("type(result_b) == type(FiniteSet):", type(result_b) == type(FiniteSet))
 
 
+def test8():
+    pprint(parse_gdl(load_json(gdl_filename)))
+
+
 # gdl_filename = '../../../data/gdl/gdl-xiaokai.json'
 gdl_filename = '../../../data/gdl/gdl-yuchang.json'
 # example_filename = '../../../data/gdl/gc-xiaokai.json'
@@ -139,7 +143,7 @@ example_filename = '../../../data/gdl/gc-yuchang.json'
 pid = 3
 
 if __name__ == '__main__':
-    test2()
+    test8()
     # test6()
     # test4()
     # test7()
