@@ -1,8 +1,15 @@
 # Byte-compiled
 __pycache__
+src/em.egg-info
 
 # PyCharm
 .idea
 
 # data
 data
+
+# Qin Cheng project files
+/src/em/gcgen
+/src/em/gdl
+
+.vscode
