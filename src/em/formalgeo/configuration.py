@@ -623,7 +623,14 @@ class GeometricConfiguration:
         if len(replaced_equations) == 0:  # free entity
             constraint_values.append(target_syms)
         else:
-            solved_results = nonlinsolve(replaced_equations, target_syms)
+            try:
+                solved_results = func_timeout(
+                    timeout=self.timeout,
+                    func=nonlinsolve,
+                    args=(replaced_equations, target_syms)
+                )
+            except FunctionTimedOut:
+                return solved_values
             if type(solved_results) is not FiniteSet:
                 return solved_values
 
