@@ -299,7 +299,7 @@ class GeometricConfiguration:
         self.groups.append([])
         return operation_id
 
-    def construct(self, construction):
+    def construct(self, construction, added=True):
         """Construct a new point, line, or circle.
         1.Parse the geometric construction statement, extract the target entity, implicit entities, and dependent
         entities, perform entity existence checks, format validity checks, and linear construction checks, and add the
@@ -334,14 +334,17 @@ class GeometricConfiguration:
         """
         letters = list(self.letters)  # available letters
 
-        # add entity to self.operations
-        operation_id = self._add_operation(construction)
-
         t_entities, d_entities, constraints, added_facts = self._parse_construction(construction, letters)
         solved_values = self._solve_constraints(t_entities, constraints)
 
         if len(solved_values) == 0:  # no solved entity
             return False
+
+        if not added:
+            return True
+
+        # add entity to self.operations
+        operation_id = self._add_operation(construction)
 
         premise_ids = []
         for dependent_entity in d_entities:
@@ -371,19 +374,18 @@ class GeometricConfiguration:
         return True
 
     def _update_range(self, new_entities):
-        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}
         for predicate, instance in new_entities:
             if predicate != 'Point':
                 continue
             x = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['XOfPoint']['sym']}")
             y = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['YOfPoint']['sym']}")
-            if self.value_of_para_sym[x] > self.range['x_max']:
+            if float(self.value_of_para_sym[x]) > self.range['x_max']:
                 self.range['x_max'] = self.value_of_para_sym[x]
-            if self.value_of_para_sym[x] < self.range['x_min']:
+            if float(self.value_of_para_sym[x]) < self.range['x_min']:
                 self.range['x_min'] = self.value_of_para_sym[x]
-            if self.value_of_para_sym[y] > self.range['y_max']:
+            if float(self.value_of_para_sym[y]) > self.range['y_max']:
                 self.range['y_max'] = self.value_of_para_sym[y]
-            if self.value_of_para_sym[y] < self.range['y_min']:
+            if float(self.value_of_para_sym[y]) < self.range['y_min']:
                 self.range['y_min'] = self.value_of_para_sym[y]
 
     def _parse_construction(self, construction, letters):
