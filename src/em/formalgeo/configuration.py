@@ -934,13 +934,8 @@ class GeometricConfiguration:
 
             solved_values = list(solved_values)
 
-            if len(solved_values) > 1:
-                for solved_value in list(solved_values):
-                    if solved_value[0] != 0:  # t must equal to 0 in every solved value
-                        return False, None
-            else:
-                solved_value = solved_values[0]
-                if solved_value[0] != 0:  # t must equal to 0
+            for solved_value in solved_values:
+                if solved_value[0] != 0:  # t must equal to 0 in every solved value
                     return False, None
 
             operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
@@ -964,7 +959,6 @@ class GeometricConfiguration:
 
     def _get_minimum_dependent_equations(self, target_expr):
         syms = [symbols('t')]
-        equations = [syms[0] - target_expr]
         premise_ids = []
         for sym in sorted(list(target_expr.free_symbols), key=str):  # sorting ensures reproducibility
             if sym not in self.value_of_attr_sym:
@@ -972,6 +966,7 @@ class GeometricConfiguration:
             else:
                 premise_ids.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
                 target_expr = target_expr.subs({sym: self.value_of_attr_sym[sym]})
+        equations = [syms[0] - target_expr]
 
         i = 1
         while i < len(syms):  # find all related equations
