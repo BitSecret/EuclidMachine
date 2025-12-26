@@ -6,6 +6,7 @@ from em.formalgeo.tools import load_json, parse_gdl, save_json, get_vocab
 from em.formalgeo.tools import show_gc, draw_gc, get_hypergraph
 from sympy import *
 from pprint import pprint
+from random import Random
 
 
 def test1():
@@ -136,6 +137,17 @@ def test8():
     pprint(parse_gdl(load_json(gdl_filename)))
 
 
+def test9():
+    random = Random(42)  # 固定种子
+
+    new_random = copy.copy(random)
+
+    print("原始实例:", random.random())  # 0.025010...
+    print("原始实例:", random.random())  # 0.025010...
+    print("新实例:  ", new_random.random())  # 0.275029...
+    print("新实例:  ", new_random.random())  # 0.275029...
+
+
 # gdl_filename = '../../../data/gdl/gdl-xiaokai.json'
 gdl_filename = '../../../data/gdl/gdl-yuchang.json'
 # example_filename = '../../../data/gdl/gc-xiaokai.json'
@@ -143,7 +155,4 @@ example_filename = '../../../data/gdl/gc-yuchang.json'
 pid = 3
 
 if __name__ == '__main__':
-    test8()
-    # test6()
-    # test4()
-    # test7()
+    test9()

@@ -1,3 +1,5 @@
+import copy
+
 from em.formalgeo.tools import entity_letters, satisfy_algebra, satisfy_inequalities
 from em.formalgeo.tools import parse_fact, parse_algebra, replace_paras, replace_expr, parse_disjunctive
 from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet
@@ -100,8 +102,7 @@ class GeometricConfiguration:
         """
         self.parsed_gdl = parsed_gdl
         self.letters = list(entity_letters)  # available entity letters
-        self.random_seed = random_seed
-        random.seed(self.random_seed)
+        self.random = random.Random(random_seed)  # the random number generator of the current instance
         self.max_samples = max_samples  # Maximum number of random samples
         self.max_epoch = max_epoch  # Maximum number of random sampling iterations
         self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # Coordinate range for points
@@ -335,7 +336,7 @@ class GeometricConfiguration:
         letters = list(self.letters)  # available letters
 
         t_entities, d_entities, constraints, added_facts = self._parse_construction(construction, letters)
-        solved_values = self._solve_constraints(t_entities, constraints)
+        solved_values = self._solve_constraints(t_entities, constraints, added)
 
         if len(solved_values) == 0:  # no solved entity
             return False
@@ -605,7 +606,11 @@ class GeometricConfiguration:
             e_msg = f"Incorrect temporary form '{temporary_entity}' for '{predicate}'."
             raise Exception(e_msg)
 
-    def _solve_constraints(self, target_entities, constraints):
+    def _solve_constraints(self, target_entities, constraints, added):
+        if added:
+            random_instance = self.random
+        else:
+            random_instance = copy.copy(self.random)
         solved_values = []  # list of values, such as [[1, 0.5], [1.5, 0.5]]
         constraint_values = []  # list of constraint values, contains symbols, such as [[y, y - 1], [x, 0.5]]
 
@@ -651,7 +656,7 @@ class GeometricConfiguration:
         epoch = 0
         while len(solved_values) < self.max_samples and epoch < self.max_epoch:  # random sampling
             constraint_value = constraint_values[epoch % len(constraint_values)]
-            solved_value = self._random_value(target_syms, constraint_value)
+            solved_value = self._random_value(target_syms, constraint_value, random_instance)
             sym_to_value = dict(zip(target_syms, solved_value))
             if satisfy_inequalities(replaced_inequalities, sym_to_value):
                 solved_values.append(solved_value)
@@ -674,7 +679,7 @@ class GeometricConfiguration:
                 syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['ROfCircle']['sym']}"))
         return syms
 
-    def _random_value(self, syms, constraint_value):
+    def _random_value(self, syms, constraint_value, random_instance):
         random_values = {}
         free_symbols = set()
         for i in range(len(syms)):  # save k for sampling b
@@ -687,24 +692,24 @@ class GeometricConfiguration:
         for sym in free_symbols:  # sample k first, because the value of k is used when sampling b
             if str(sym).split('.')[1] != 'k':
                 continue
-            random_k = tan(random.uniform(-89, 89) * pi / 180)
+            random_k = tan(random_instance.uniform(-89, 89) * pi / 180)
             random_values[sym] = random_k
 
         for sym in free_symbols:
             if str(sym).split('.')[1] in ['x', 'cx']:
                 middle_x = (self.range['x_max'] + self.range['x_min']) / 2
                 range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
-                random_x = random.uniform(float(middle_x - range_x), float(middle_x + range_x))
+                random_x = random_instance.uniform(float(middle_x - range_x), float(middle_x + range_x))
                 random_values[sym] = random_x
             elif str(sym).split('.')[1] in ['y', 'cy']:
                 middle_y = (self.range['y_max'] + self.range['y_min']) / 2
                 range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
-                random_y = random.uniform(float(middle_y - range_y), float(middle_y + range_y))
+                random_y = random_instance.uniform(float(middle_y - range_y), float(middle_y + range_y))
                 random_values[sym] = random_y
             elif str(sym).split('.')[1] == 'r':
                 max_distance = float(((self.range['y_max'] - self.range['y_min']) ** 2 +
                                       (self.range['x_max'] - self.range['x_min']) ** 2) ** 0.5) / 2 * self.rate
-                random_r = random.uniform(0, max_distance)
+                random_r = random_instance.uniform(0, max_distance)
                 random_values[sym] = random_r
             elif str(sym).split('.')[1] == 'b':
                 middle_x = (self.range['x_max'] + self.range['x_min']) / 2
@@ -717,7 +722,7 @@ class GeometricConfiguration:
                            float(middle_y - range_y - k_value * (middle_x - range_x)),
                            float(middle_y + range_y - k_value * (middle_x + range_x)),
                            float(middle_y - range_y - k_value * (middle_x + range_x))]
-                random_b = random.uniform(min(b_range), max(b_range))
+                random_b = random_instance.uniform(min(b_range), max(b_range))
                 random_values[sym] = random_b
 
         solved_value = [item.subs(random_values).evalf(n=15, chop=False) for item in constraint_value]
