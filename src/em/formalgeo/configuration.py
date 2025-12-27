@@ -1,10 +1,25 @@
 import copy
-
 from em.formalgeo.tools import entity_letters, satisfy_algebra, satisfy_inequalities
 from em.formalgeo.tools import parse_fact, parse_algebra, replace_paras, replace_expr, parse_disjunctive
 from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet
 from func_timeout import func_timeout, FunctionTimedOut
 import random
+
+
+def _get_para_sym_of_entities(entities):
+    syms = []  # symbols of parameter
+    for predicate, instance in entities:
+        if predicate == 'Point':
+            syms.append(symbols(f"{instance[0]}.x"))
+            syms.append(symbols(f"{instance[0]}.y"))
+        elif predicate == 'Line':
+            syms.append(symbols(f"{instance[0]}.k"))
+            syms.append(symbols(f"{instance[0]}.b"))
+        else:  # Circle
+            syms.append(symbols(f"{instance[0]}.u"))
+            syms.append(symbols(f"{instance[0]}.v"))
+            syms.append(symbols(f"{instance[0]}.r"))
+    return syms
 
 
 class GeometricConfiguration:
@@ -358,7 +373,7 @@ class GeometricConfiguration:
             self.letters.remove(target_entity[1][0])  # update self.letters
 
         # set entity's parameter to solved value
-        target_syms = self._get_para_sym_of_entities(t_entities)
+        target_syms = _get_para_sym_of_entities(t_entities)
         solved_value = solved_values.pop(0)
         for i in range(len(target_syms)):
             self.value_of_para_sym[target_syms[i]] = solved_value[i]
@@ -378,15 +393,15 @@ class GeometricConfiguration:
         for predicate, instance in new_entities:
             if predicate != 'Point':
                 continue
-            x = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['XOfPoint']['sym']}")
-            y = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['YOfPoint']['sym']}")
-            if float(self.value_of_para_sym[x]) > self.range['x_max']:
+            x = symbols(f"{instance[0]}.x")
+            y = symbols(f"{instance[0]}.y")
+            if self.value_of_para_sym[x] > self.range['x_max']:
                 self.range['x_max'] = self.value_of_para_sym[x]
-            if float(self.value_of_para_sym[x]) < self.range['x_min']:
+            if self.value_of_para_sym[x] < self.range['x_min']:
                 self.range['x_min'] = self.value_of_para_sym[x]
-            if float(self.value_of_para_sym[y]) > self.range['y_max']:
+            if self.value_of_para_sym[y] > self.range['y_max']:
                 self.range['y_max'] = self.value_of_para_sym[y]
-            if float(self.value_of_para_sym[y]) < self.range['y_min']:
+            if self.value_of_para_sym[y] < self.range['y_min']:
                 self.range['y_min'] = self.value_of_para_sym[y]
 
     def _parse_construction(self, construction, letters):
@@ -624,7 +639,7 @@ class GeometricConfiguration:
             else:
                 replaced_inequalities.append((algebra_relation, expr))
 
-        target_syms = self._get_para_sym_of_entities(target_entities)
+        target_syms = _get_para_sym_of_entities(target_entities)
         if len(replaced_equations) == 0:  # free entity
             constraint_values.append(target_syms)
         else:
@@ -664,21 +679,6 @@ class GeometricConfiguration:
 
         return solved_values
 
-    def _get_para_sym_of_entities(self, entities):
-        syms = []  # symbols of parameter
-        for predicate, instance in entities:
-            if predicate == 'Point':
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['XOfPoint']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['YOfPoint']['sym']}"))
-            elif predicate == 'Line':
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['KOfLine']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['BOfLine']['sym']}"))
-            else:
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['UOfCircle']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['VOfCircle']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['ROfCircle']['sym']}"))
-        return syms
-
     def _random_value(self, syms, constraint_value, random_instance):
         random_values = {}
         free_symbols = set()
@@ -696,12 +696,12 @@ class GeometricConfiguration:
             random_values[sym] = random_k
 
         for sym in free_symbols:
-            if str(sym).split('.')[1] in ['x', 'cx']:
+            if str(sym).split('.')[1] in ['x', 'u']:
                 middle_x = (self.range['x_max'] + self.range['x_min']) / 2
                 range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
                 random_x = random_instance.uniform(float(middle_x - range_x), float(middle_x + range_x))
                 random_values[sym] = random_x
-            elif str(sym).split('.')[1] in ['y', 'cy']:
+            elif str(sym).split('.')[1] in ['y', 'v']:
                 middle_y = (self.range['y_max'] + self.range['y_min']) / 2
                 range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
                 random_y = random_instance.uniform(float(middle_y - range_y), float(middle_y + range_y))
