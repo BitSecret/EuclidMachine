@@ -3,9 +3,9 @@ import json
 import time
 from em.formalgeo.configuration import GeometricConfiguration
 from em.formalgeo.tools import load_json, parse_gdl, draw_gc, get_hypergraph
+from pprint import pformat
 
-
-# --- 1. 保持原有的构图函数 ---
+# --- 构图函数 ---
 def construct_from_list(problem, construction_steps):
     print(f"开始执行 {len(construction_steps)} 步构图...")
     for i, step in enumerate(construction_steps):
@@ -49,7 +49,7 @@ class BruteForceSolver:
                 if name in ():
                     continue
 
-                print("当前第", number_of_iterations + 1, "次尝试应用定理", name)
+                # print("当前第", number_of_iterations + 1, "次尝试应用定理", name)
 
                 b = self.problem.apply(name)
 
@@ -92,14 +92,16 @@ def run_test():
     # 构图步骤
     constructions = [
         "Point(D):FreePoint(D)",
-        "Point(B):FreePoint(B)",
-        "Point(C):PointLeftSegment(C,D,B)",
-        "Line(s):PointOnLine(C,s)&PointOnLine(B,s)",
-        "Line(l):PointOnLine(D,l)&PointOnLine(B,l)",
-        "Line(m):PointOnLine(C,m)&LinesParallel(l,m)",
-        "Line(i):PointOnLine(D,i)&PointOnLine(C,i)",
-        "Line(j):PointOnLine(B,j)&LinesParallel(i,j)",
-        "Point(E):PointOnLine(E,j)&PointOnLine(E,m)"
+          "Point(B):FreePoint(B)",
+          "Point(C):PointLeftSegment(C,D,B)",
+          "Line(s):PointOnLine(C,s)&PointOnLine(B,s)",
+          "Line(l):PointOnLine(D,l)&PointOnLine(B,l)",
+          "Line(m):PointOnLine(C,m)&LinesParallel(l,m)",
+          "Line(i):PointOnLine(D,i)&PointOnLine(C,i)",
+          "Line(j):PointOnLine(B,j)&LinesParallel(i,j)",
+          "Point(E):PointOnLine(E,j)&PointOnLine(E,m)",
+          "Line(k):PointOnLine(D,k)&PointOnLine(E,k)",
+          "Line(p):PointOnLine(D,p)"
     ]
 
     # 执行构图
@@ -108,8 +110,33 @@ def run_test():
         solver = BruteForceSolver(problem, gdl_path)
         solver.solve(max_iterations=10)
 
+        file_path1 = f"data/newproblemfacts_violence.json"
+        with open(file_path1, "w", encoding="utf-8") as f:
+            for item in problem.facts:
+                f.write(json.dumps(str(item), ensure_ascii=False) + "\n")
+        print(f"已生成新文件: {file_path1}")
+
+        file_path2 = f"data/newproblemoperations_violence.json"
+        with open(file_path2, "w", encoding="utf-8") as f:
+            for item in problem.operations:
+                f.write(json.dumps(str(item), ensure_ascii=False) + "\n")
+        print(f"已生成新文件: {file_path2}")
+
+        file_path3 = f"data/newproblemgroups_violence.json"
+        with open(file_path3, "w", encoding="utf-8") as f:
+            for item in problem.groups:
+                f.write(json.dumps(str(item), ensure_ascii=False) + "\n")
+        print(f"已生成新文件: {file_path3}")
+
+        get_h = pformat(get_hypergraph(problem, False), width=400)
+        file_path4 = f"data/get_hypergraph_violence.json"
+        with open(file_path4, "w", encoding="utf-8") as f:
+            f.write(get_h)
         # 可选：保存结果
         # draw_gc(problem, 'data/output-brute.png')
+        hypergraph = get_hypergraph(problem)
+        with open('data/hypergraph-1-solve_add_aux.json', 'w', encoding='utf-8') as f:
+            json.dump(hypergraph, f, ensure_ascii=False, indent=4)
 
 
 if __name__ == "__main__":
