@@ -396,17 +396,17 @@ def generate_theorem_dataset_multiple(file_path, output_path, index):
 if __name__ == "__main__":
     # 这里的 index 参数是 推理过程 开始的第一个 ID
     # 如果要过滤掉所有构图步骤, constrcutions_len 是个不错的切分点
-    raw_data = load_data('data/hypergraph-1-raw.json')  # 加载原始数据以获取构图长度
+    raw_data = load_data('data/hypergraph-yyc0105-raw.json')  # 加载原始数据以获取构图长度
     constructions_len = len(raw_data['notes'])
 
     generate_theorem_dataset(
-        'data/hypergraph-1-solve_add_aux.json',
-        'tp_data/problem_1_add_aux.json',
+        'data/hypergraph-yyc0105-solve.json',
+        'tp_data/problem_yyc0105.json',
         constructions_len
     )
 
     generate_theorem_dataset_multiple(
-        'data/hypergraph-1-solve_add_aux.json',
-        'tp_data/problem_1_multiple_add_aux.json',
+        'data/hypergraph-yyc0105-solve.json',
+        'tp_data/problem_yyc0105_multiple.json',
         constructions_len
     )

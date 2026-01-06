@@ -83,13 +83,18 @@ def generate_auxiliary_training_data(dependent_entities_json_path, proof_json_pa
         print(f"Error: 在超图中未找到目标节点 {goal} (类型或参数不匹配)")
         return
 
-    # 找到这些点在 notes 中的索引（用于回溯定义）
+    # 找到这些实体（点、线、圆）在 notes 中的索引（用于回溯定义）
     target_entity_indices = []
     for p_name in target_params:
         for i, note in enumerate(notes):
-            if note[0] == "Point" and note[1] == p_name:
+            # 【核心修改】：不仅查找 Point，还要查找 Line 和 Circle
+            if note[0] in ["Point", "Line", "Circle"] and note[1] == p_name:
                 target_entity_indices.append(i)
                 break
+
+    # 增加一个检查，防止参数名在notes中找不到
+    if not target_entity_indices:
+        print(f"Warning: 无法在构图中找到目标参数 {target_params} 对应的定义节点。")
 
     basic_indices = set()
     for idx in target_entity_indices:
@@ -126,7 +131,7 @@ def generate_auxiliary_training_data(dependent_entities_json_path, proof_json_pa
     for orig_idx in range(len(tp_datas) - 1, -1, -1):
         tp_data = tp_datas[orig_idx]
 
-        # 【修复 2】：使用去空格后的字符串进行比较，增强鲁棒性
+        # 使用去空格后的字符串进行比较
         if normalize_string(tp_data['goal']) == normalized_input_goal:
             current_facts = tp_data['current_state']
 
@@ -140,14 +145,13 @@ def generate_auxiliary_training_data(dependent_entities_json_path, proof_json_pa
 
     if not found_state:
         print(f"Warning: 未在 problem_1.json 中找到目标为 {goal} 的有效 current_state")
-        # 如果找不到证明数据，就无法计算辅助线，直接返回
         return
 
     # 5. 计算差异 (辅助构图)
     auxiliary_lines = proof_full_lines - set(basic_lines)
 
     print("\n" + "=" * 40)
-    print("【合成训练数据样本 (Fixed & Robust)】")
+    print("【合成训练数据样本 (Supported Point/Line/Circle)】")
     print("=" * 40)
     print(f"Goal (Input): {notes[goal_node_idx]}")
     print("-" * 20)
@@ -176,7 +180,8 @@ constructions = [
     "Line(p):PointOnLine(D,p)"
 ]
 
-goal = "SegmentEqualSegment(B, E, D, C)"
+# 测试 Point/Line/Circle 类型参数
+goal = "AngleEqualAngle(s, l, s, m)"
 
 generate_auxiliary_training_data('data/hypergraph-1-solve_add_aux.json', 'tp_data/problem_1_add_aux.json',
                                  constructions, goal)
