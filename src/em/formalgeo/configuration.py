@@ -1,8 +1,25 @@
+import copy
 from em.formalgeo.tools import entity_letters, satisfy_algebra, satisfy_inequalities
 from em.formalgeo.tools import parse_fact, parse_algebra, replace_paras, replace_expr, parse_disjunctive
 from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet
 from func_timeout import func_timeout, FunctionTimedOut
 import random
+
+
+def _get_para_sym_of_entities(entities):
+    syms = []  # symbols of parameter
+    for predicate, instance in entities:
+        if predicate == 'Point':
+            syms.append(symbols(f"{instance[0]}.x"))
+            syms.append(symbols(f"{instance[0]}.y"))
+        elif predicate == 'Line':
+            syms.append(symbols(f"{instance[0]}.k"))
+            syms.append(symbols(f"{instance[0]}.b"))
+        else:  # Circle
+            syms.append(symbols(f"{instance[0]}.u"))
+            syms.append(symbols(f"{instance[0]}.v"))
+            syms.append(symbols(f"{instance[0]}.r"))
+    return syms
 
 
 class GeometricConfiguration:
@@ -100,8 +117,7 @@ class GeometricConfiguration:
         """
         self.parsed_gdl = parsed_gdl
         self.letters = list(entity_letters)  # available entity letters
-        self.random_seed = random_seed
-        random.seed(self.random_seed)
+        self.random = random.Random(random_seed)  # the random number generator of the current instance
         self.max_samples = max_samples  # Maximum number of random samples
         self.max_epoch = max_epoch  # Maximum number of random sampling iterations
         self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # Coordinate range for points
@@ -299,7 +315,7 @@ class GeometricConfiguration:
         self.groups.append([])
         return operation_id
 
-    def construct(self, construction):
+    def construct(self, construction, added=True):
         """Construct a new point, line, or circle.
         1.Parse the geometric construction statement, extract the target entity, implicit entities, and dependent
         entities, perform entity existence checks, format validity checks, and linear construction checks, and add the
@@ -334,14 +350,17 @@ class GeometricConfiguration:
         """
         letters = list(self.letters)  # available letters
 
-        # add entity to self.operations
-        operation_id = self._add_operation(construction)
-
         t_entities, d_entities, constraints, added_facts = self._parse_construction(construction, letters)
-        solved_values = self._solve_constraints(t_entities, constraints)
+        solved_values = self._solve_constraints(t_entities, constraints, added)
 
         if len(solved_values) == 0:  # no solved entity
             return False
+
+        if not added:
+            return True
+
+        # add entity to self.operations
+        operation_id = self._add_operation(construction)
 
         premise_ids = []
         for dependent_entity in d_entities:
@@ -354,7 +373,7 @@ class GeometricConfiguration:
             self.letters.remove(target_entity[1][0])  # update self.letters
 
         # set entity's parameter to solved value
-        target_syms = self._get_para_sym_of_entities(t_entities)
+        target_syms = _get_para_sym_of_entities(t_entities)
         solved_value = solved_values.pop(0)
         for i in range(len(target_syms)):
             self.value_of_para_sym[target_syms[i]] = solved_value[i]
@@ -371,12 +390,11 @@ class GeometricConfiguration:
         return True
 
     def _update_range(self, new_entities):
-        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}
         for predicate, instance in new_entities:
             if predicate != 'Point':
                 continue
-            x = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['XOfPoint']['sym']}")
-            y = symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['YOfPoint']['sym']}")
+            x = symbols(f"{instance[0]}.x")
+            y = symbols(f"{instance[0]}.y")
             if self.value_of_para_sym[x] > self.range['x_max']:
                 self.range['x_max'] = self.value_of_para_sym[x]
             if self.value_of_para_sym[x] < self.range['x_min']:
@@ -603,7 +621,11 @@ class GeometricConfiguration:
             e_msg = f"Incorrect temporary form '{temporary_entity}' for '{predicate}'."
             raise Exception(e_msg)
 
-    def _solve_constraints(self, target_entities, constraints):
+    def _solve_constraints(self, target_entities, constraints, added):
+        if added:
+            random_instance = self.random
+        else:
+            random_instance = copy.copy(self.random)
         solved_values = []  # list of values, such as [[1, 0.5], [1.5, 0.5]]
         constraint_values = []  # list of constraint values, contains symbols, such as [[y, y - 1], [x, 0.5]]
 
@@ -617,11 +639,18 @@ class GeometricConfiguration:
             else:
                 replaced_inequalities.append((algebra_relation, expr))
 
-        target_syms = self._get_para_sym_of_entities(target_entities)
+        target_syms = _get_para_sym_of_entities(target_entities)
         if len(replaced_equations) == 0:  # free entity
             constraint_values.append(target_syms)
         else:
-            solved_results = nonlinsolve(replaced_equations, target_syms)
+            try:
+                solved_results = func_timeout(
+                    timeout=self.timeout,
+                    func=nonlinsolve,
+                    args=(replaced_equations, target_syms)
+                )
+            except FunctionTimedOut:
+                return solved_values
             if type(solved_results) is not FiniteSet:
                 return solved_values
 
@@ -642,7 +671,7 @@ class GeometricConfiguration:
         epoch = 0
         while len(solved_values) < self.max_samples and epoch < self.max_epoch:  # random sampling
             constraint_value = constraint_values[epoch % len(constraint_values)]
-            solved_value = self._random_value(target_syms, constraint_value)
+            solved_value = self._random_value(target_syms, constraint_value, random_instance)
             sym_to_value = dict(zip(target_syms, solved_value))
             if satisfy_inequalities(replaced_inequalities, sym_to_value):
                 solved_values.append(solved_value)
@@ -650,22 +679,7 @@ class GeometricConfiguration:
 
         return solved_values
 
-    def _get_para_sym_of_entities(self, entities):
-        syms = []  # symbols of parameter
-        for predicate, instance in entities:
-            if predicate == 'Point':
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['XOfPoint']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['YOfPoint']['sym']}"))
-            elif predicate == 'Line':
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['KOfLine']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['BOfLine']['sym']}"))
-            else:
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['UOfCircle']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['VOfCircle']['sym']}"))
-                syms.append(symbols(f"{instance[0]}.{self.parsed_gdl['Measures']['ROfCircle']['sym']}"))
-        return syms
-
-    def _random_value(self, syms, constraint_value):
+    def _random_value(self, syms, constraint_value, random_instance):
         random_values = {}
         free_symbols = set()
         for i in range(len(syms)):  # save k for sampling b
@@ -678,24 +692,24 @@ class GeometricConfiguration:
         for sym in free_symbols:  # sample k first, because the value of k is used when sampling b
             if str(sym).split('.')[1] != 'k':
                 continue
-            random_k = tan(random.uniform(-89, 89) * pi / 180)
+            random_k = tan(random_instance.uniform(-89, 89) * pi / 180)
             random_values[sym] = random_k
 
         for sym in free_symbols:
-            if str(sym).split('.')[1] in ['x', 'cx']:
+            if str(sym).split('.')[1] in ['x', 'u']:
                 middle_x = (self.range['x_max'] + self.range['x_min']) / 2
                 range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
-                random_x = random.uniform(float(middle_x - range_x), float(middle_x + range_x))
+                random_x = random_instance.uniform(float(middle_x - range_x), float(middle_x + range_x))
                 random_values[sym] = random_x
-            elif str(sym).split('.')[1] in ['y', 'cy']:
+            elif str(sym).split('.')[1] in ['y', 'v']:
                 middle_y = (self.range['y_max'] + self.range['y_min']) / 2
                 range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
-                random_y = random.uniform(float(middle_y - range_y), float(middle_y + range_y))
+                random_y = random_instance.uniform(float(middle_y - range_y), float(middle_y + range_y))
                 random_values[sym] = random_y
             elif str(sym).split('.')[1] == 'r':
                 max_distance = float(((self.range['y_max'] - self.range['y_min']) ** 2 +
                                       (self.range['x_max'] - self.range['x_min']) ** 2) ** 0.5) / 2 * self.rate
-                random_r = random.uniform(0, max_distance)
+                random_r = random_instance.uniform(0, max_distance)
                 random_values[sym] = random_r
             elif str(sym).split('.')[1] == 'b':
                 middle_x = (self.range['x_max'] + self.range['x_min']) / 2
@@ -708,7 +722,7 @@ class GeometricConfiguration:
                            float(middle_y - range_y - k_value * (middle_x - range_x)),
                            float(middle_y + range_y - k_value * (middle_x + range_x)),
                            float(middle_y - range_y - k_value * (middle_x + range_x))]
-                random_b = random.uniform(min(b_range), max(b_range))
+                random_b = random_instance.uniform(min(b_range), max(b_range))
                 random_values[sym] = random_b
 
         solved_value = [item.subs(random_values).evalf(n=15, chop=False) for item in constraint_value]
@@ -925,13 +939,8 @@ class GeometricConfiguration:
 
             solved_values = list(solved_values)
 
-            if len(solved_values) > 1:
-                for solved_value in list(solved_values):
-                    if solved_value[0] != 0:  # t must equal to 0 in every solved value
-                        return False, None
-            else:
-                solved_value = solved_values[0]
-                if solved_value[0] != 0:  # t must equal to 0
+            for solved_value in solved_values:
+                if solved_value[0] != 0:  # t must equal to 0 in every solved value
                     return False, None
 
             operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
@@ -955,7 +964,6 @@ class GeometricConfiguration:
 
     def _get_minimum_dependent_equations(self, target_expr):
         syms = [symbols('t')]
-        equations = [syms[0] - target_expr]
         premise_ids = []
         for sym in sorted(list(target_expr.free_symbols), key=str):  # sorting ensures reproducibility
             if sym not in self.value_of_attr_sym:
@@ -963,6 +971,7 @@ class GeometricConfiguration:
             else:
                 premise_ids.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
                 target_expr = target_expr.subs({sym: self.value_of_attr_sym[sym]})
+        equations = [syms[0] - target_expr]
 
         i = 1
         while i < len(syms):  # find all related equations
