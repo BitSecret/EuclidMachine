@@ -3,7 +3,7 @@ from collections import deque, defaultdict
 import random
 
 """
-    当前代码用来生成每一道题目（经过推理之后收敛的超图）的叶子结点的定理预测数据
+    当前代码用来生成每一道题目（经过推理之后收敛的超图）的叶子结点的定理预测数据,也可以改为推理过程中出现的所有fact的定理预测数据
 """
 
 # --- 配置区域 ---
@@ -220,7 +220,8 @@ def generate_theorem_dataset(file_path, output_path, index):
         if fid not in fact_consumers:
             leaf_facts.append(fid)
             continue
-
+        # -------这一部分修改之后就可以没有那么多“重复”的goal,比如SegmentEqualSegment(A, B, B, A)和SegmentEqualSegment(B, A, B, A)--------
+        # 如果删除了这一段，就只会有multip_form之后的最后一个fact作为goal
         consumer_steps = fact_consumers[fid]
         is_consumed_by_real_theorem = False
         for step_idx in consumer_steps:
@@ -233,6 +234,7 @@ def generate_theorem_dataset(file_path, output_path, index):
         if not is_consumed_by_real_theorem:
             leaf_facts.append(fid)
 
+    print(leaf_facts)
     print(f"过滤后找到 {len(leaf_facts)} 个有效目标 (已排除 {IGNORED_GOAL_TYPES})。")
 
     # --- 2. 生成数据 ---
@@ -284,6 +286,55 @@ def generate_theorem_dataset(file_path, output_path, index):
         processed_goals += 1
 
     print(f"处理完成。共生成 {len(dataset)} 条有效训练样本。")
+    # --------------寻找特定goal的当前状态----------------------
+    # goal_fid = 105
+    # dataset_1 = []
+    # involved_steps, involved_facts = get_minimal_dependency_subgraph(goal_fid, fact_producer, hypergraph)
+    # execution_sequence = topological_sort_steps(involved_steps, hypergraph, fact_producer)
+    #
+    # # 初始化状态
+    # current_state_ids = set()
+    # for step_idx in involved_steps:
+    #     premises = hypergraph[step_idx][0]
+    #     for pid in premises:
+    #         prod_step = fact_producer.get(pid)
+    #         if prod_step is None or prod_step not in involved_steps:
+    #             current_state_ids.add(pid)
+    #
+    # goal_text = format_fact(notes[goal_fid])
+    #
+    # for i, step_idx in enumerate(execution_sequence):
+    #     edge_id = hypergraph[step_idx][1]
+    #     op_info = edges[edge_id]
+    #     op_name = op_info[0]
+    #     conclusions = hypergraph[step_idx][2]
+    #
+    #     should_predict = op_name not in SKIPPED_PREDICTION_OPS
+    #
+    #     if should_predict:
+    #         state_text_list = []
+    #         for fid in current_state_ids:
+    #             fact_data = notes[fid]
+    #             predicate = fact_data[0]
+    #             # 如果该谓词在黑名单中，就不加入 state_text_list
+    #             if predicate not in IGNORED_STATE_TYPES:
+    #                 state_text_list.append(format_fact(fact_data))
+    #         # state_text_list.sort() # 可选排序
+    #
+    #         sample = {
+    #             "goal": goal_text,
+    #             "current_state": state_text_list,
+    #             "target_action": op_name,
+    #             "当前状态和动作依赖的拓扑排序序列": execution_sequence[0: i + 1],
+    #             "当前叶子结点完整的拓扑排序序列": execution_sequence  # 序号对应超图中的边
+    #         }
+    #         dataset_1.append(sample)
+    #
+    #     for cid in conclusions:
+    #         current_state_ids.add(cid)
+    #
+    # with open('tp_data/problem_demo.json', 'w', encoding='utf-8') as f:
+    #     json.dump(dataset_1, f, indent=4, ensure_ascii=False)
 
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(dataset, f, indent=4, ensure_ascii=False)
@@ -396,17 +447,17 @@ def generate_theorem_dataset_multiple(file_path, output_path, index):
 if __name__ == "__main__":
     # 这里的 index 参数是 推理过程 开始的第一个 ID
     # 如果要过滤掉所有构图步骤, constrcutions_len 是个不错的切分点
-    raw_data = load_data('data/hypergraph-yyc0105-raw.json')  # 加载原始数据以获取构图长度
+    raw_data = load_data('data/hypergraph-2-raw.json')  # 加载原始数据以获取构图长度
     constructions_len = len(raw_data['notes'])
 
     generate_theorem_dataset(
-        'data/hypergraph-yyc0105-solve.json',
-        'tp_data/problem_yyc0105.json',
+        'data/hypergraph-2-solve.json',
+        'tp_data/problem_2.json',
         constructions_len
     )
 
     generate_theorem_dataset_multiple(
-        'data/hypergraph-yyc0105-solve.json',
-        'tp_data/problem_yyc0105_multiple.json',
+        'data/hypergraph-2-solve.json',
+        'tp_data/problem_2_multiple.json',
         constructions_len
     )

@@ -1,3 +1,5 @@
+from sympy import symbols
+
 from em.formalgeo.configuration import GeometricConfiguration
 from em.formalgeo.tools import load_json, parse_gdl
 from em.formalgeo.tools import show_gc, draw_gc,get_hypergraph
@@ -8,13 +10,40 @@ from pprint import pprint
 from pprint import pformat
 #cd EuclidMachine#
 
+def get_entities(gc):
+    entities_dict = {}
+
+    for entity in ['Point', 'Line', 'Circle']:
+        if len(gc.ids_of_predicate[entity]) == 0:
+            continue
+
+        entities_dict[entity] = {}
+
+        for fact_id in gc.ids_of_predicate[entity]:
+            name = gc.facts[fact_id][1][0]
+
+            if entity == 'Point':
+                values = [(round(float(gc.value_of_para_sym[symbols(f'{name}.x')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{name}.y')]), 4))]
+            elif entity == 'Line':
+                values = [(round(float(gc.value_of_para_sym[symbols(f'{name}.k')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{name}.b')]), 4))]
+            else:
+                values = [(round(float(gc.value_of_para_sym[symbols(f'{name}.cx')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{name}.cy')]), 4),
+                           round(float(gc.value_of_para_sym[symbols(f'{name}.r')]), 4))]
+
+            entities_dict[entity][name] = values
+
+    return entities_dict
+
 #python /home/lengmen/yyc/Projects/EuclidMachine/src/em/inductor/solver.py#
 def test_problem(data,num):
-    problem = GeometricConfiguration(parse_gdl(load_json('gdl-yuchang.json')))
+    problem = GeometricConfiguration(parse_gdl(load_json('/home/lengmen/szh/PythonWorkSpace/EuclidMachine/data/new_gdl/gdl-yuchang.json')))
     #problem = GeometricConfiguration(parse_gdl(load_json('/home/lengmen/yyc/Projects/EuclidMachine/src/em/inductor/mygdl_useless.json')))
     for i in data["constructions"]:
         problem.construct(i)
-    a = parse_gdl(load_json('gdl-yuchang.json'))
+    a = parse_gdl(load_json('/home/lengmen/szh/PythonWorkSpace/EuclidMachine/data/new_gdl/gdl-yuchang.json'))
     #a = load_json('/home/lengmen/yyc/Projects/EuclidMachine/src/em/inductor/parsed_gdl.json')
     fact_is_change=1
     number_of_iterations=0
@@ -54,8 +83,9 @@ def test_problem(data,num):
     #print("newproblem.operations", problem.operations)
     show_gc(problem)
     draw_gc(problem,"png")
-    print("problem.groups",problem.groups)
+    # print("problem.groups",problem.groups)
     #pprint(get_hypergraph(problem),width=400)
+    print(f'最终fact数量：{len(problem.facts)}')
     get_h = pformat(get_hypergraph(problem,False), width=400)
     file_path1 = f"newproblemfacts{num}.json"
     # file_path1 ="changeofproblem.json"
@@ -88,9 +118,15 @@ def test_problem(data,num):
         for item in problem.groups:
             f.write(json.dumps(str(item), ensure_ascii=False) + "\n")
     print(f"已生成新文件: {file_path5}")
+
+    file_path6 = f"newproblementities{num}.json"
+    entities = get_entities(problem)
+    with open(file_path6, "w", encoding="utf-8") as f:
+        json.dump(entities, f, ensure_ascii=False, indent=2)
+
 if __name__ == '__main__':
     all_start=time.time()
-    file_path = "test_theo.json"
+    file_path = "/home/lengmen/szh/PythonWorkSpace/EuclidMachine/data/test_problem/problem.json"
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     #save_readable_parsed_gdl(parse_gdl(load_json('gdl-yuchang.json')), 'parsed_gdl.json')

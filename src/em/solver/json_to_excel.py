@@ -113,11 +113,10 @@ def process_hypergraph_to_excel(json_file_path, output_excel_path):
 
 # --- 执行 ---
 # 请确保文件名与你的json文件一致
-json_filename = 'data/hypergraph-yyc0105-solve.json'
-excel_filename = 'excel_data/geometry_proof_analysis-yyc0105.xlsx'
+json_filename = 'data/hypergraph-2-solve.json'
+excel_filename = 'excel_data/geometry_proof_analysis-2.xlsx'
 
-# 如果你没有文件，可以将上面的 fullContent 粘贴到一个名为 hypergraph-6-solve.json 的文件中
-# 或者直接在这里运行（需要确保文件存在）
+
 if __name__ == '__main__':
     # 简单的检查文件是否存在，防止报错
     import os
