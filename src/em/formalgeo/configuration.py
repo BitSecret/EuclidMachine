@@ -1,31 +1,30 @@
-import copy
-from em.formalgeo.tools import entity_letters, satisfy_algebra, satisfy_inequalities
-from em.formalgeo.tools import parse_fact, parse_algebra, replace_paras, replace_expr, parse_disjunctive
+from em.formalgeo.tools import entity_letters
+from em.formalgeo.tools import _parse_expr_to_algebraic_forms, _get_geometric_constraints
+from em.formalgeo.tools import _satisfy_algebraic, precision
+from em.formalgeo.tools import _parse_construction, _parse_theorem, _parse_goal
+from em.formalgeo.tools import _serialize_fact, _serialize_operation, _serialize_goal
+from em.formalgeo.tools import _is_negation, _is_conjunction, _is_disjunction
+from em.formalgeo.tools import _replace_instance, _replace_expr
+from em.formalgeo.tools import _anti_parse_operation, _anti_parse_fact, _format_ids
 from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet
 from func_timeout import func_timeout, FunctionTimedOut
+from graphviz import Graph
+import matplotlib.pyplot as plt
+import matplotlib
 import random
+import copy
 
+# from formalgeo.tools import draw_gpl
 
-def _get_para_sym_of_entities(entities):
-    syms = []  # symbols of parameter
-    for predicate, instance in entities:
-        if predicate == 'Point':
-            syms.append(symbols(f"{instance[0]}.x"))
-            syms.append(symbols(f"{instance[0]}.y"))
-        elif predicate == 'Line':
-            syms.append(symbols(f"{instance[0]}.k"))
-            syms.append(symbols(f"{instance[0]}.b"))
-        else:  # Circle
-            syms.append(symbols(f"{instance[0]}.u"))
-            syms.append(symbols(f"{instance[0]}.v"))
-            syms.append(symbols(f"{instance[0]}.r"))
-    return syms
+matplotlib.use('TkAgg')  # resolve backend compatibility issues
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # use Microsoft YaHei font
+plt.rcParams['axes.unicode_minus'] = False  # fix negative sign display issues
 
 
 class GeometricConfiguration:
-
-    def __init__(self, parsed_gdl, random_seed=0, max_samples=1, max_epoch=1000, rate=1.2, timeout=2):
-        """The <Configuration> class represents the construction and reasoning process of a geometric configuration.
+    def __init__(self, parsed_gdl, random_seed=0, sample_max_number=1, sample_max_epoch=1000, sample_rate=1.2,
+                 timeout=2):
+        """The <GeometricConfiguration> class stores the construction and reasoning process of a configuration.
 
         Args:
             parsed_gdl (dict): Parsed Geometry Definition Language (GDL).
@@ -51,7 +50,7 @@ class GeometricConfiguration:
             self.id (dict): (predicate, instance) -> fact_id. Mapping from fact to fact_id.
             examples: {('Point', ('A',)): 0, ('PointOnLine', ('A', 'l')): 5, ('Equation', 'MeasureOfAngle(lk)-1'): 12}
 
-            self.groups (list): operation_id -> [fact_id]. A tuple of fact_id that share the same operation_id. The
+            self.operation_groups (list): operation_id -> [fact_id]. A tuple of fact_id that share the same operation_id. The
             index of element is its operation_id.
             examples: [[0, 1, 2], [3, 4], [5, 6, 7, 8]]
 
@@ -116,204 +115,59 @@ class GeometricConfiguration:
             return False.
         """
         self.parsed_gdl = parsed_gdl
-        self.letters = list(entity_letters)  # available entity letters
-        self.random = random.Random(random_seed)  # the random number generator of the current instance
-        self.max_samples = max_samples  # Maximum number of random samples
-        self.max_epoch = max_epoch  # Maximum number of random sampling iterations
-        self.range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # Coordinate range for points
-        self.rate = rate  # Range expansion ratio during random sampling
-        self.timeout = timeout  # Maximum tolerance time for solving algebraic premises
+        self.letters = set(entity_letters)  # available entity letters
+        self.random_backup = random.Random(random_seed)  # the random number generator backup
+        self.random = None  # the random number generator of the current instance
+        self.sample_max_number = sample_max_number  # Maximum sampling quantity for symbolic value random sampling
+        self.sample_max_epoch = sample_max_epoch  # Maximum epoch of sampling attempts
+        self.sample_rate = sample_rate  # Range expansion ratio during random sampling
+        self.sample_range = {'x_max': 1, 'x_min': -1, 'y_max': 1, 'y_min': -1}  # Coordinate range of all points
+        self.timeout = timeout  # Maximum tolerance time for solving algebraic equations
 
-        self.facts = []  # fact_id -> (predicate, instance, premise_ids, entity_ids, operation_id)
-        self.id = {}  # (predicate, instance) -> fact_id
-        self.ids_of_predicate = {'Point': [], 'Line': [], 'Circle': [], 'Equation': []}  # predicate -> [fact_id]
-        self.instances_of_predicate = {'Point': [], 'Line': [], 'Circle': [], 'Equation': []}  # predicate -> [instance]
-        for relation in self.parsed_gdl['Relations']:
-            self.ids_of_predicate[relation] = []
-            self.instances_of_predicate[relation] = []
-        self.operations = []  # operation_id -> operation
-        self.groups = []  # operation_id -> [fact_id]
-        self.entity_map = {}  # entity -> entity_type
+        # construction
+        self.constructions = {}  # operation_id -> (used_branch, parsed_construction)
 
-        self.value_of_para_sym = {}  # sym -> value
-        self.constructions = {}  # operation_id -> (t_entity, i_entities, d_entities, constraints, solved_values)
+        # forward solving
+        self.facts = []  # fact_id -> (predicate, instance, {premise_id}, {entity_id}, operation_id)
+        self.fact_id = {}  # (predicate, instance) -> fact_id
+        self.predicate_to_fact_ids = {}  # predicate -> {fact_id}
+        for relation in list(self.parsed_gdl['Entities']) + list(self.parsed_gdl['Relations']) + ['Eq']:
+            self.predicate_to_fact_ids[relation] = set()
+        self.fact_groups = {}  # operation_id -> {fact_id}
 
-        self.value_of_attr_sym = {}  # sym -> value (solved sym)
-        self.equations = []  # equation_id -> [simplified_equation, fact_id, dependent_equation_fact_ids]
-        self.attr_sym_to_equations = {}  # sym -> [equation_id] (unsolved sym)
+        # backward solving
+        self.goals = []  # goal_id -> (sub_goal_id_tree, operation_id, root_sub_goal_id)
+        self.status_of_goal = {}  # goal_id -> int (0: not check, 1: solved, -1: skip or unsolved)
+        self.premise_ids_of_goal = {}  # goal_id -> {premise_id}
 
-    def _add_fact(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        if predicate == 'Equation':
-            return self._add_equation(predicate, instance, premise_ids, entity_ids, operation_id)
-        elif predicate in {'Point', 'Line', 'Circle'}:
-            return self._add_entity(predicate, instance, premise_ids, entity_ids, operation_id)
-        elif predicate in {'SamePoint', 'SameLine', 'SameCircle'}:
-            return self._add_same(predicate, instance, premise_ids, entity_ids, operation_id)
-        else:
-            return self._add_relation(predicate, instance, premise_ids, entity_ids, operation_id)
+        self.sub_goals = []  # sub_goal_id -> (predicate, instance, goal_id)
+        self.status_of_sub_goal = {}  # sub_goal_id -> int (0: not check, 1: solved, -1: skip or unsolved)
+        self.premise_ids_of_sub_goal = {}  # sub_goal_id -> {premise_id}
+        self.leaf_goal_ids = {}  # sub_goal_id -> {leaf_goal_id}
+        self.sub_goal_ids = {}  # (predicate, instance) -> {sub_goal_id}
+        self.predicate_to_sub_goal_ids = {}  # predicate -> {sub_goal_id}
+        for relation in list(self.parsed_gdl['Entities']) + list(self.parsed_gdl['Relations']) + ['Eq']:
+            self.predicate_to_sub_goal_ids[relation] = set()
 
-    def _add_entity(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        if (predicate, instance) in self.id:
-            return False
+        # operations
+        self.operations = []  # operation_id -> (operation_type, operation_predicate, operation_instance)
 
-        self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
+        # instances
+        self.relation_instances = {'Point': set(), 'Line': set(), 'Circle': set()}  # relation_name -> {instance}
+        self.theorem_instances = {}  # theorem_name -> {instance: (premises, conclusion)}
 
-        self.entity_map[instance[0]] = predicate
+        # algebraic system
+        self.entity_sym_to_value = {}  # entity_related_sym -> value
+        self.sym_to_value = {}  # (solved) relation_related_sym -> value
+        self.sym_to_sym = {}  # sym_multiple_form -> sym_unified_form
+        self.sym_to_syms = {}  # sym_unified_form -> {sym_multiple_form}
+        self.equations = {}  # group_id -> ((simplified_eq), ({premise_id}), {sym})
+        self.group_count = 0  # generate group_id
+        self.simplified_eq_sub_goal = {}  # sub_goal_id -> (simplified_eq, {premise_id}, {dependent_sym}, {group_id})
+        self.solved_target_cache = {}  # target_expr -> {premise_id}
+        self.attempted_equations_cache = {}  # (target_dependent_equation) -> passed
 
-        return True
-
-    def _add_relation(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        if (predicate, instance) in self.id:
-            return False
-
-        fact_id = self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
-
-        operation_id = self._add_operation('multiple_forms')
-        for indexes in self.parsed_gdl['Relations'][predicate]['multiple_forms']:
-            multiple_form = tuple([instance[i] for i in indexes])
-            self._add_fact(predicate, multiple_form, [fact_id], entity_ids, operation_id)
-
-        replace = dict(zip(self.parsed_gdl['Relations'][predicate]['paras'], instance))
-        operation_id = self._add_operation('auto_extend')
-        for predicate, instance in self.parsed_gdl['Relations'][predicate]['extends']:
-            if predicate == 'Equation':
-                instance = replace_expr(instance, replace)
-            else:
-                instance = tuple(replace_paras(instance, replace))
-            entity_ids = tuple(self._get_entity_ids(predicate, instance))
-            self._add_fact(predicate, instance, (fact_id,), entity_ids, operation_id)
-
-        return True
-
-    def _add_equation(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        if len(instance.free_symbols) == 0:
-            return False
-        if str(instance)[0] == '-':
-            instance = - instance
-        if (predicate, instance) in self.id:
-            return False
-
-        fact_id = self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
-
-        if self.operations[operation_id] in ['solve_eq', 'same_entity_extend']:
-            return True
-
-        sym_to_value = {}  # add equation to self.equations
-        dependent_equation_fact_ids = []
-        for sym in instance.free_symbols:
-            if sym not in self.value_of_attr_sym:
-                continue
-            sym_to_value[sym] = self.value_of_attr_sym[sym]
-            dependent_equation_fact_ids.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
-        free_symbols = instance.free_symbols - set(sym_to_value)
-        if len(free_symbols) == 0:
-            return True
-
-        free_symbols = sorted(list(free_symbols), key=str)  # sorting ensures reproducibility
-        instance = instance.subs(sym_to_value)
-        equation_id = len(self.equations)
-        self.equations.append([instance, fact_id, dependent_equation_fact_ids])
-
-        for sym in free_symbols:
-            if sym not in self.attr_sym_to_equations:
-                self.attr_sym_to_equations[sym] = [equation_id]
-            else:
-                self.attr_sym_to_equations[sym].append(equation_id)
-
-        return True
-
-    def _add_same(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        """Add SamePoint, SameLine, and SameCircle, and remove redundant facts.
-        For two equivalent entities A and B, first sort them. Then remove the entity that comes later in the sorted
-        order (entity B). All facts related to entity B will be removed from ids_of_predicate and instances_of_predicate
-        (but not deleted from the facts and id). Subsequently, the removed relations are replaced with relations to
-        entity A and added to the facts.
-        When using theorems with parameters, facts related to B (deleted entity) are derived; when using the
-        parameterless form of theorems, no related facts are derived.
-        The process involves three steps: First, replace B with A in all relations. Second, update symbols in
-        self.attr_sym_to_equations, replacing any B with A. Finally, apply the same substitution to
-        self.value_of_attr_sym and add A's value.
-        """
-        if instance[0] == instance[1]:
-            return False
-
-        instance = sorted([instance, (instance[1], instance[0])])[0]
-
-        if (predicate, instance) in self.id:
-            return False
-
-        fact_id = self._add_one(predicate, instance, premise_ids, entity_ids, operation_id)
-
-        A, B = instance
-
-        for predicate in self.instances_of_predicate:  # replace geometric relation
-            if predicate in {'SamePoint', 'SameLine', 'SameCircle', 'Equation'}:
-                continue
-            for i in range(len(self.instances_of_predicate[predicate]))[::-1]:
-                if B in self.instances_of_predicate[predicate][i]:  # replace B with A
-                    instance = tuple([e if e != B else A for e in self.instances_of_predicate[predicate][i]])
-                    premise_ids = [fact_id, self.ids_of_predicate[predicate][i]]
-                    entity_ids = self._get_entity_ids(predicate, instance)
-                    operation_id = self._add_operation('same_entity_extend')
-                    self._add_fact(predicate, instance, premise_ids, entity_ids, operation_id)  # add fact about A
-                    self.instances_of_predicate[predicate].pop(i)  # delete fact about B
-                    self.ids_of_predicate[predicate].pop(i)
-
-        self.value_of_attr_sym = {}  # sym -> value (solved sym)
-        self.equations = []  # equation_id -> [simplified_equation, fact_id, dependent_equation_fact_ids]
-        self.attr_sym_to_equations = {}  # sym -> [equation_id] (unsolved sym)
-
-        for b_sym in self.attr_sym_to_equations:  # replace algebraic relation
-            entities, attr = str(b_sym).split('.')
-            if B not in entities:
-                continue
-            a_sym = symbols(entities.replace(B, A) + '.' + attr)
-            if a_sym in self.value_of_attr_sym:  # b_sym unknown, a_sym known: set b_sym to the same value as a_sym
-                operation_id = self._add_operation('same_entity_extend')
-                premise_ids = [fact_id, self.id[('Equation', a_sym - self.value_of_attr_sym[a_sym])]]
-                self._set_value_of_attr_sym(b_sym, self.value_of_attr_sym[a_sym], premise_ids, operation_id)
-            else:  # b_sym unknown, a_sym unknown: replace b_sym with a_sym
-                for i in range(len(self.attr_sym_to_equations[b_sym])):
-                    equation_id = self.attr_sym_to_equations[b_sym][i]
-                    self.equations[equation_id][0] = self.equations[equation_id][0].subs({b_sym: a_sym})
-                    self.equations[equation_id][2].append(fact_id)
-                    # symbols may be merged, such as: AC.dpp-BC.dpp
-                    if a_sym not in self.equations[equation_id][0].free_symbols:
-                        self.attr_sym_to_equations[b_sym].pop(i)
-                self.attr_sym_to_equations[a_sym] = self.attr_sym_to_equations[b_sym]
-                self.attr_sym_to_equations.pop(b_sym)
-
-        for b_sym in self.value_of_attr_sym:
-            entities, attr = str(b_sym).split('.')
-            if B not in entities:
-                continue
-
-            a_sym = symbols(entities.replace(B, A) + '.' + attr)
-            if a_sym in self.value_of_attr_sym:  # b_sym known, a_sym known: skip
-                continue
-
-            operation_id = self._add_operation('same_entity_extend')  # b_sym known, a_sym unknown: set a_sym's value
-            premise_ids = [fact_id, self.id[('Equation', b_sym - self.value_of_attr_sym[b_sym])]]
-            self._set_value_of_attr_sym(a_sym, self.value_of_attr_sym[b_sym], premise_ids, operation_id)
-
-        return True
-
-    def _add_one(self, predicate, instance, premise_ids, entity_ids, operation_id):
-        fact_id = len(self.facts)
-        premise_ids = tuple(sorted(list(set(premise_ids))))
-        entity_ids = tuple(sorted(list(set(entity_ids))))
-        self.facts.append((predicate, instance, premise_ids, entity_ids, operation_id))
-        self.id[(predicate, instance)] = fact_id
-        self.groups[operation_id].append(fact_id)
-        self.ids_of_predicate[predicate].append(fact_id)
-        self.instances_of_predicate[predicate].append(instance)
-        return fact_id
-
-    def _add_operation(self, operation):
-        operation_id = len(self.operations)
-        self.operations.append(operation)
-        self.groups.append([])
-        return operation_id
+    """↓-----------Construction-----------↓"""
 
     def construct(self, construction, added=True):
         """Construct a new point, line, or circle.
@@ -337,349 +191,169 @@ class GeometricConfiguration:
 
         Args:
             construction (str): Constructed entities and constraints. The constraints can be either constraints defined
-            in GDL or algebraic constraints. The constraints need to be connected by '&'. Each constraint must include
-            the entity currently being constructed, and the remaining entities must all be known entities. Furthermore,
-            the temporary forms of entities are also permitted for use here.
-            examples: 'Point(A):FreePoint(A)'  # free entity
-                      'Line(l):PointOnLine(A,l)&PointOnLine(B,l)'  # constraints defined in GDL
-                      'Point(C):Eq(Sub(DPP(C.x,C.y,A.x,A.y),Mul(DPP(C.x,C.y,B.x,B.y),2)))'  # algebraic constraints
-                      'Point(D):PointOnLine(D,AC)'  # temporary forms of Line
+                in GDL or algebraic constraints. The constraints need to be connected by '&'. Each constraint must
+                include the entity currently being constructed, and the remaining entities must all be known entities.
+                Furthermore, the temporary forms of entities are also permitted for use here.
+                examples: 'Point(A):FreePoint(A)'  # free entity
+                          'Line(l):PointOnLine(A,l)&PointOnLine(B,l)'  # constraints defined in GDL
+                          'Point(C):Eq(Sub(AC.dpp,CB.dpp))'  # algebraic constraints
 
         Returns:
             result (bool): If successfully construct the entity, return True; otherwise, return False.
         """
-        letters = list(self.letters)  # available letters
+        if added:
+            self.random = self.random_backup
+        else:
+            self.random = copy.copy(self.random_backup)
 
-        t_entities, d_entities, constraints, added_facts = self._parse_construction(construction, letters)
-        solved_values = self._solve_constraints(t_entities, constraints, added)
+        # (target_entities, dependent_entities, added_facts, equations, inequalities, values)
+        parsed_construction = _parse_construction(construction, self.parsed_gdl)
+        for branch in range(len(parsed_construction)):
+            t_entities, d_entities, added_facts, equations, inequalities, _ = parsed_construction[branch]
 
-        if len(solved_values) == 0:  # no solved entity
-            return False
+            # parse entity symbols
+            t_syms = []
+            for entity, instance in t_entities:
+                if entity == 'Point':
+                    t_syms.append(symbols(instance[0] + '.x'))
+                    t_syms.append(symbols(instance[0] + '.y'))
+                elif entity == 'Line':
+                    t_syms.append(symbols(instance[0] + '.k'))
+                    t_syms.append(symbols(instance[0] + '.b'))
+                else:
+                    t_syms.append(symbols(instance[0] + '.u'))
+                    t_syms.append(symbols(instance[0] + '.v'))
+                    t_syms.append(symbols(instance[0] + '.r'))
 
-        if not added:
+            # get dependent entity id and check whether dependent entity exits
+            premise_ids = set()
+            for dependent_entity in d_entities:
+                premise_ids.add(self.fact_id[dependent_entity])
+
+            # solve constraint
+            solved_values = self._solve_constraints(t_syms, equations, inequalities)
+            if len(solved_values) == 0:  # no solved entity, solve next branch
+                continue
+            if not added:
+                return True
+
+            # add entity to self.operations
+            operation_id = self._add_operation(('construction', construction.split(':')[0], construction.split(':')[1]))
+
+            # add target entity to self.facts
+            for entity, instance in t_entities:
+                self._add_fact(entity, instance, premise_ids, operation_id)
+
+            # set target entity's attribution to solved value
+            solved_value = solved_values[0]
+            for i in range(len(t_syms)):
+                self.entity_sym_to_value[t_syms[i]] = solved_value[i]
+                entity, attr = str(t_syms[i]).split('.')
+                if attr == 'x':  # update sample range
+                    if solved_value[i] > self.sample_range['x_max']:
+                        self.sample_range['x_max'] = solved_value[i]
+                    elif solved_value[i] < self.sample_range['x_min']:
+                        self.sample_range['x_min'] = solved_value[i]
+                elif attr == 'y':
+                    if solved_value[i] > self.sample_range['y_max']:
+                        self.sample_range['y_max'] = solved_value[i]
+                    elif solved_value[i] < self.sample_range['y_min']:
+                        self.sample_range['y_min'] = solved_value[i]
+
+            # add relations to self.facts
+            for predicate, instance in added_facts:
+                self._add_fact(predicate, instance, premise_ids, operation_id)
+
+            # save constructions
+            parsed_construction[branch][5] = (t_syms, solved_values)
+            self.constructions[operation_id] = (branch + 1, parsed_construction)
+
+            # a certain branch completes construction, return True
             return True
 
-        # add entity to self.operations
-        operation_id = self._add_operation(construction)
+        # no branch completes construction, return False
+        return False
 
-        premise_ids = []
-        for dependent_entity in d_entities:
-            premise_ids.append(self.id[dependent_entity])
-        premise_ids = tuple(premise_ids)
-
-        # add target_entities to self.facts
-        for target_entity in t_entities:
-            self._add_entity(target_entity[0], target_entity[1], premise_ids, premise_ids, operation_id)
-            self.letters.remove(target_entity[1][0])  # update self.letters
-
-        # set entity's parameter to solved value
-        target_syms = _get_para_sym_of_entities(t_entities)
-        solved_value = solved_values.pop(0)
-        for i in range(len(target_syms)):
-            self.value_of_para_sym[target_syms[i]] = solved_value[i]
-        self._update_range(t_entities)
-
-        # add relation to self.facts
-        for predicate, instance in added_facts:
-            entity_ids = tuple(self._get_entity_ids(predicate, instance))
-            self._add_fact(predicate, instance, premise_ids, entity_ids, operation_id)
-
-        # add (t_entities, d_entities, constraints, solved_values) to self.constructions
-        self.constructions[operation_id] = (t_entities, d_entities, constraints, tuple(solved_values))
-
-        return True
-
-    def _update_range(self, new_entities):
-        for predicate, instance in new_entities:
-            if predicate != 'Point':
-                continue
-            x = symbols(f"{instance[0]}.x")
-            y = symbols(f"{instance[0]}.y")
-            if self.value_of_para_sym[x] > self.range['x_max']:
-                self.range['x_max'] = self.value_of_para_sym[x]
-            if self.value_of_para_sym[x] < self.range['x_min']:
-                self.range['x_min'] = self.value_of_para_sym[x]
-            if self.value_of_para_sym[y] > self.range['y_max']:
-                self.range['y_max'] = self.value_of_para_sym[y]
-            if self.value_of_para_sym[y] < self.range['y_min']:
-                self.range['y_min'] = self.value_of_para_sym[y]
-
-    def _parse_construction(self, construction, letters):
-        target_entity, constraints = construction.split(':')
-        target_predicate, target_paras = parse_fact(target_entity)
-        target_entity = (target_predicate, tuple(target_paras))
-
-        implicit_entities = []  # (predicate, entity)
-        dependent_entities = []  # (predicate, entity)
-        parsed_constraints = []  # (predicate, instance)
-
-        if target_predicate not in ['Point', 'Line', 'Circle']:
-            e_msg = f"Incorrect entity type: '{target_predicate}'. Expected: 'Point', 'Line' and 'Circle'."
-            raise Exception(e_msg)
-        if target_entity in self.id:
-            e_msg = f"Entity {target_entity} already exits. "
-            raise Exception(e_msg)
-        letters.remove(target_paras[0])
-
-        for constraint in parse_disjunctive(constraints):
-            if (constraint.startswith('Eq(') or constraint.startswith('G(')  # algebraic constraint
-                    or constraint.startswith('Geq(') or constraint.startswith('L(')
-                    or constraint.startswith('Leq(') or constraint.startswith('Ueq(')):
-
-                algebra_relation, expr = parse_algebra(constraint)
-
-                has_target_entity = False  # EE check and Linear Construction check
-                for dependent_entity in self._get_dependent_entities('Equation', expr):
-                    if target_entity == dependent_entity:
-                        has_target_entity = True
-                    elif dependent_entity not in self.id:
-                        e_msg = (f"Incorrect algebraic constraint: '{constraint}'. "
-                                 f"Dependent entity {dependent_entity} not exists.")
-                        raise Exception(e_msg)
-                    elif dependent_entity not in dependent_entities:
-                        dependent_entities.append(dependent_entity)
-
-                if not has_target_entity:
-                    e_msg = (f"Incorrect algebraic constraint: '{constraint}'. "
-                             f"Target entity {target_entity} not in algebraic constraints.")
-                    raise Exception(e_msg)
-
-                parsed_constraints.append((algebra_relation, expr))  # pass check, add constraint
-            else:  # predefined constraint
-                constraint_name, constraint_paras = parse_fact(constraint)
-
-                # check the length of constraint para
-                if len(constraint_paras) != len(self.parsed_gdl['Relations'][constraint_name]["paras"]):
-                    e_msg = (f"Incorrect number of paras: '{constraint}'. "
-                             f"Expected: {len(self.parsed_gdl['Relations'][constraint_name]['paras'])}, "
-                             f"Actual: {len(constraint_paras)}.")
-                    raise Exception(e_msg)
-
-                if constraint_name in {'FreePoint', 'FreeLine', 'FreeCircle'}:  # Free entity
-                    if constraint_paras[0] != target_paras[0]:
-                        e_msg = f"Target entity {target_entity} not in the constraint '{constraint}'."
-                        raise Exception(e_msg)
-                    return [target_entity], [], [], [(constraint_name, tuple(constraint_paras))]
-
-                has_target_entity = False
-                for i in range(len(constraint_paras)):  # parse constraint
-                    predicate = self.parsed_gdl['Relations'][constraint_name]["ee_checks"][i]
-
-                    if len(constraint_paras[i]) == 1:  # norm form
-                        dependent_entity = (predicate, (constraint_paras[i],))
-                        if target_entity == dependent_entity:
-                            has_target_entity = True
-                        elif dependent_entity not in self.id:
-                            e_msg = (f"Incorrect relation constraint: '{constraint}'. "
-                                     f"Dependent entity {dependent_entity} not exists.")
-                            raise Exception(e_msg)
-                        elif dependent_entity not in dependent_entities:
-                            dependent_entities.append(dependent_entity)
-                    else:  # temporary form
-                        has_target_entity_temp, implicit_entity = self._parse_temporary_entity(
-                            predicate, constraint_paras[i], target_entity, letters,
-                            implicit_entities, dependent_entities, parsed_constraints
-                        )
-                        constraint_paras[i] = implicit_entity  # set it to norm form
-                        has_target_entity = has_target_entity_temp or has_target_entity
-
-                if not has_target_entity:
-                    e_msg = f"Target entity {target_entity} not in the constraint '{constraint}'."
-                    raise Exception(e_msg)
-
-                parsed_constraints.append((constraint_name, tuple(constraint_paras)))
-
-        constraints = []  # (algebra_relation, expr)
-        added_facts = []  # (predicate, instance)
-        for predicate, instance in parsed_constraints:
-            if type(instance) is not tuple:
-                constraints.append((predicate, instance))
-            else:
-                added_facts.append((predicate, instance))  # add current constraint
-                relation = self.parsed_gdl['Relations'][predicate]
-                replace = dict(zip(relation['paras'], instance))
-
-                # add implicit entities
-                for implicit_predicate in relation['implicit_entities']:
-                    for implicit_instance in relation['implicit_entities'][implicit_predicate]:
-                        if implicit_instance in letters:
-                            implicit_entities.append((implicit_predicate, (implicit_instance,)))
-                            letters.remove(implicit_instance)
-                        else:
-                            replaced_instance = letters.pop(0)
-                            replace[implicit_instance] = replaced_instance
-                            implicit_entities.append((implicit_predicate, (replaced_instance,)))
-
-                # merge fact: add constraint's implicit extends
-                for implicit_predicate, implicit_instance in relation['implicit_extends']:
-                    if implicit_predicate == 'Equation':
-                        implicit_instance = replace_expr(implicit_instance, replace)
-                    else:
-                        implicit_instance = tuple(replace_paras(implicit_instance, replace))
-                    added_facts.append((implicit_predicate, implicit_instance))
-
-                # merge constraints
-                for algebra_relation, expr in relation['constraints']:
-                    expr = replace_expr(expr, replace)
-                    constraints.append((algebra_relation, expr))
-
-        return [target_entity] + implicit_entities, dependent_entities, constraints, added_facts
-
-    def _parse_temporary_entity(self, predicate, temporary_entity, target_entity, letters,
-                                implicit_entities, dependent_entities, parsed_constraints):
-        has_target_entity = False
-
-        if predicate == 'Line' and len(temporary_entity) == 2:  # Line(AB)
-            if target_entity[0] == 'Point' and target_entity[1][0] in temporary_entity:
-                has_target_entity = True
-            if ('Point', (temporary_entity[0],)) not in self.id or ('Point', (temporary_entity[1],)) not in self.id:
-                e_msg = f"Some entities in temporary entity '{temporary_entity}' do not exist."
-                raise Exception(e_msg)
-
-            dependent_entities.append(('Point', (temporary_entity[0],)))
-            dependent_entities.append(('Point', (temporary_entity[1],)))
-
-            implicit_entity = letters.pop(0)  # add temporary entity to implicit_entities
-            implicit_entities.append(('Line', (implicit_entity,)))
-            parsed_constraints.append(('PointOnLine', (temporary_entity[0], implicit_entity)))
-            parsed_constraints.append(('PointOnLine', (temporary_entity[1], implicit_entity)))
-
-            return has_target_entity, implicit_entity
-
-        elif predicate == 'Line' and len(temporary_entity) == 3:  # Line(A;l)
-
-            if target_entity[0] == 'Point' and target_entity[1][0] == temporary_entity[0]:
-                has_target_entity = True
-            if target_entity[0] == 'Line' and target_entity[1][0] == temporary_entity[2]:
-                has_target_entity = True
-
-            if ('Point', (temporary_entity[0],)) not in self.id or ('Line', (temporary_entity[2],)) not in self.id:
-                e_msg = f"Some entities in temporary entity '{temporary_entity}' do not exist."
-                raise Exception(e_msg)
-
-            dependent_entities.append(('Point', (temporary_entity[0],)))
-            dependent_entities.append(('Line', (temporary_entity[2],)))
-
-            implicit_entity = letters.pop(0)  # add temporary entity to implicit_entities
-            implicit_entities.append(('Line', (implicit_entity,)))
-            parsed_constraints.append(('PointOnLine', (temporary_entity[0], implicit_entity)))
-            parsed_constraints.append(('Parallel', (temporary_entity[0], implicit_entity)))
-
-            return has_target_entity, implicit_entity
-
-        elif predicate == 'Circle' and len(temporary_entity) == 3:  # Circle(ABC)
-            if target_entity[0] == 'Point' and target_entity[1][0] == temporary_entity[0]:
-                has_target_entity = True
-            if target_entity[0] == 'Point' and target_entity[1][0] == temporary_entity[1]:
-                has_target_entity = True
-            if target_entity[0] == 'Point' and target_entity[1][0] == temporary_entity[2]:
-                has_target_entity = True
-
-            if (('Point', (temporary_entity[0],)) not in self.id or ('Point', (temporary_entity[1],)) not in self.id
-                    or ('Point', (temporary_entity[2],)) not in self.id):
-                e_msg = f"Some entities in temporary entity '{temporary_entity}' do not exist."
-                raise Exception(e_msg)
-
-            dependent_entities.append(('Point', (temporary_entity[0],)))
-            dependent_entities.append(('Point', (temporary_entity[1],)))
-            dependent_entities.append(('Point', (temporary_entity[2],)))
-
-            implicit_entity = letters['Circle'].pop(0)
-            implicit_entities.append(('Circle', (implicit_entity,)))
-            parsed_constraints.append(('PointOnCircle', (temporary_entity[0], implicit_entity)))
-            parsed_constraints.append(('PointOnCircle', (temporary_entity[1], implicit_entity)))
-            parsed_constraints.append(('PointOnCircle', (temporary_entity[2], implicit_entity)))
-
-            return has_target_entity, temporary_entity
-
-        elif len(temporary_entity) == 4 and predicate == 'Circle':  # Circle(O;AB)
-            if target_entity[0] == 'Point' and target_entity[1][0] == temporary_entity[0]:
-                has_target_entity = True
-            if target_entity[0] == 'Point' and target_entity[1][0] == temporary_entity[2]:
-                has_target_entity = True
-            if target_entity[0] == 'Point' and target_entity[1][0] == temporary_entity[3]:
-                has_target_entity = True
-
-            if (('Point', (temporary_entity[0],)) not in self.id or ('Point', (temporary_entity[1],)) not in self.id
-                    or ('Point', (temporary_entity[2],)) not in self.id):
-                e_msg = f"Some entities in temporary entity '{temporary_entity}' do not exist."
-                raise Exception(e_msg)
-
-            dependent_entities.append(('Point', (temporary_entity[0],)))
-            dependent_entities.append(('Point', (temporary_entity[2],)))
-            dependent_entities.append(('Point', (temporary_entity[3],)))
-
-            implicit_entity = letters['Circle'].pop(0)
-            implicit_entities.append(('Circle', (implicit_entity,)))
-            parsed_constraints.append(('PointIsCircleCenter', (temporary_entity[0], implicit_entity)))
-            parsed_constraints.append(('PointOnCircle', (temporary_entity[2], implicit_entity)))
-            parsed_constraints.append(('PointOnCircle', (temporary_entity[3], implicit_entity)))
-
-            return has_target_entity, temporary_entity
-
-        else:
-            e_msg = f"Incorrect temporary form '{temporary_entity}' for '{predicate}'."
-            raise Exception(e_msg)
-
-    def _solve_constraints(self, target_entities, constraints, added):
-        if added:
-            random_instance = self.random
-        else:
-            random_instance = copy.copy(self.random)
-        solved_values = []  # list of values, such as [[1, 0.5], [1.5, 0.5]]
+    def _solve_constraints(self, t_syms, equations, inequalities):
         constraint_values = []  # list of constraint values, contains symbols, such as [[y, y - 1], [x, 0.5]]
+        solved_values = []  # list of values, such as [[1, 0.5], [1.5, 0.5]]
 
         replaced_equations = []  # expr
-        replaced_inequalities = []  # (algebra_relation, expr)
+        for expr in equations:
+            expr = expr.subs(self.entity_sym_to_value)
+            if len(expr.free_symbols) == 0:
+                if not _satisfy_algebraic['Eq'](expr):
+                    return solved_values
+                continue
+            replaced_equations.append(expr)
+        replaced_inequalities = []  # (algebraic_relation, expr)
+        for algebraic_relation, expr in inequalities:
+            expr = expr.subs(self.entity_sym_to_value)
+            if len(expr.free_symbols) == 0:
+                if not _satisfy_algebraic[algebraic_relation](expr):
+                    return solved_values
+                continue
+            replaced_inequalities.append((algebraic_relation, expr))
 
-        for algebra_relation, expr in constraints:
-            expr = expr.subs(self.value_of_para_sym)
-            if algebra_relation == 'Eq':
-                replaced_equations.append(expr)
-            else:
-                replaced_inequalities.append((algebra_relation, expr))
-
-        target_syms = _get_para_sym_of_entities(target_entities)
         if len(replaced_equations) == 0:  # free entity
-            constraint_values.append(target_syms)
+            constraint_values.append(t_syms)
         else:
             try:
-                solved_results = func_timeout(
+                equation_solutions = func_timeout(
                     timeout=self.timeout,
                     func=nonlinsolve,
-                    args=(replaced_equations, target_syms)
+                    args=(replaced_equations, t_syms)
                 )
             except FunctionTimedOut:
                 return solved_values
-            if type(solved_results) is not FiniteSet:
+
+            if equation_solutions is EmptySet:
+                e_smg = f'Equations no solution: {equations}'
+                raise Exception(e_smg)
+
+            if type(equation_solutions) is not FiniteSet:
                 return solved_values
 
-            for solved_value in list(solved_results):
+            for equation_solution in list(equation_solutions):
                 has_free_symbol = False
-                for item in solved_value:
-                    if len(item.free_symbols) > 0:
+                for value in equation_solution:
+                    if len(value.free_symbols) > 0:
                         has_free_symbol = True
                         break
-                if has_free_symbol:  # has free sym
-                    constraint_values.append(solved_value)
-                elif satisfy_inequalities(replaced_inequalities, dict(zip(target_syms, solved_value))):  # no free sym
-                    solved_values.append([value.evalf(n=15, chop=False) for value in solved_value])
+                if has_free_symbol:  # has free symbols
+                    constraint_values.append(equation_solution)
+                else:  # no free sym
+                    sym_to_value = dict(zip(t_syms, equation_solution))
+                    satisfied = True
+                    for algebraic_relation, expr in replaced_inequalities:
+                        if not _satisfy_algebraic[algebraic_relation](expr, sym_to_value):
+                            satisfied = False
+                            break
+                    if satisfied:
+                        solved_values.append([value.evalf(n=precision, chop=False) for value in equation_solution])
 
-        if len(constraint_values) == 0:
+        if len(constraint_values) == 0:  # no random sampling required
             return solved_values
 
-        epoch = 0
-        while len(solved_values) < self.max_samples and epoch < self.max_epoch:  # random sampling
-            constraint_value = constraint_values[epoch % len(constraint_values)]
-            solved_value = self._random_value(target_syms, constraint_value, random_instance)
-            sym_to_value = dict(zip(target_syms, solved_value))
-            if satisfy_inequalities(replaced_inequalities, sym_to_value):
-                solved_values.append(solved_value)
+        epoch = 0  # start random sampling
+        while len(solved_values) < self.sample_max_number and epoch < self.sample_max_epoch:
+            constraint_value = constraint_values[epoch % len(constraint_values)]  # iterative select constraint value
+            random_value = self._random_value(t_syms, constraint_value)
+            sym_to_value = dict(zip(t_syms, random_value))
+
+            satisfied = True
+            for algebraic_relation, expr in replaced_inequalities:
+                if not _satisfy_algebraic[algebraic_relation](expr, sym_to_value):
+                    satisfied = False
+                    break
+            if satisfied:
+                solved_values.append(random_value)
+
             epoch += 1
 
         return solved_values
 
-    def _random_value(self, syms, constraint_value, random_instance):
+    def _random_value(self, syms, constraint_value):
         random_values = {}
         free_symbols = set()
         for i in range(len(syms)):  # save k for sampling b
@@ -692,329 +366,1569 @@ class GeometricConfiguration:
         for sym in free_symbols:  # sample k first, because the value of k is used when sampling b
             if str(sym).split('.')[1] != 'k':
                 continue
-            random_k = tan(random_instance.uniform(-89, 89) * pi / 180)
+            random_k = tan(self.random.uniform(-89, 89) * pi / 180)
             random_values[sym] = random_k
 
         for sym in free_symbols:
             if str(sym).split('.')[1] in ['x', 'u']:
-                middle_x = (self.range['x_max'] + self.range['x_min']) / 2
-                range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
-                random_x = random_instance.uniform(float(middle_x - range_x), float(middle_x + range_x))
+                middle_x = (self.sample_range['x_max'] + self.sample_range['x_min']) / 2
+                range_x = (self.sample_range['x_max'] - self.sample_range['x_min']) / 2 * self.sample_rate
+                random_x = self.random.uniform(float(middle_x - range_x), float(middle_x + range_x))
                 random_values[sym] = random_x
             elif str(sym).split('.')[1] in ['y', 'v']:
-                middle_y = (self.range['y_max'] + self.range['y_min']) / 2
-                range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
-                random_y = random_instance.uniform(float(middle_y - range_y), float(middle_y + range_y))
+                middle_y = (self.sample_range['y_max'] + self.sample_range['y_min']) / 2
+                range_y = (self.sample_range['y_max'] - self.sample_range['y_min']) / 2 * self.sample_rate
+                random_y = self.random.uniform(float(middle_y - range_y), float(middle_y + range_y))
                 random_values[sym] = random_y
             elif str(sym).split('.')[1] == 'r':
-                max_distance = float(((self.range['y_max'] - self.range['y_min']) ** 2 +
-                                      (self.range['x_max'] - self.range['x_min']) ** 2) ** 0.5) / 2 * self.rate
-                random_r = random_instance.uniform(0, max_distance)
+                max_distance = float(((self.sample_range['y_max'] - self.sample_range['y_min']) ** 2 +
+                                      (self.sample_range['x_max'] - self.sample_range[
+                                          'x_min']) ** 2) ** 0.5) / 2 * self.sample_rate
+                random_r = self.random.uniform(0, max_distance)
                 random_values[sym] = random_r
             elif str(sym).split('.')[1] == 'b':
-                middle_x = (self.range['x_max'] + self.range['x_min']) / 2
-                range_x = (self.range['x_max'] - self.range['x_min']) / 2 * self.rate
-                middle_y = (self.range['y_max'] + self.range['y_min']) / 2
-                range_y = (self.range['y_max'] - self.range['y_min']) / 2 * self.rate
+                middle_x = (self.sample_range['x_max'] + self.sample_range['x_min']) / 2
+                range_x = (self.sample_range['x_max'] - self.sample_range['x_min']) / 2 * self.sample_rate
+                middle_y = (self.sample_range['y_max'] + self.sample_range['y_min']) / 2
+                range_y = (self.sample_range['y_max'] - self.sample_range['y_min']) / 2 * self.sample_rate
 
                 k_value = random_values[symbols(str(sym).split('.')[0] + '.k')]
                 b_range = [float(middle_y + range_y - k_value * (middle_x - range_x)),
                            float(middle_y - range_y - k_value * (middle_x - range_x)),
                            float(middle_y + range_y - k_value * (middle_x + range_x)),
                            float(middle_y - range_y - k_value * (middle_x + range_x))]
-                random_b = random_instance.uniform(min(b_range), max(b_range))
+                random_b = self.random.uniform(min(b_range), max(b_range))
                 random_values[sym] = random_b
 
         solved_value = [item.subs(random_values).evalf(n=15, chop=False) for item in constraint_value]
 
         return solved_value
 
-    def _get_dependent_entities(self, predicate, instance):
-        dependent_entities = set()  # (predicate, instance)
-        if predicate == 'Equation':
-            for sym in instance.free_symbols:
-                entities, sym = str(sym).split('.')
-                measure_name = self.parsed_gdl['sym_to_measure'][sym]
-                for predicate, instance in zip(self.parsed_gdl['Measures'][measure_name]['ee_check'], list(entities)):
-                    dependent_entities.add((predicate, (instance,)))
+    """↑-----------Construction-----------↑"""
+
+    """↓--------Instance Generation-------↓"""
+
+    def _get_theorem_instances(self, theorem_name):
+        if theorem_name not in self.theorem_instances:
+            theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
+
+            if 'determination' in theorem_name:  # generate theorem instances
+                generated_paras, generated_instances = self._generate_instances(
+                    (theorem_gdl['conclusion'], '&', theorem_gdl['premises'])
+                )
+            else:  # 'property'
+                generated_paras, generated_instances = self._generate_instances(
+                    (theorem_gdl['premises'], '&', theorem_gdl['conclusion'])
+                )
+            # if theorem_name == 'equal_angle_property_algebraic':
+            #     print(generated_paras)
+            #     print(generated_instances)
+            #     print("('c', 'y', 'y', 'a') in generated_instances:", ('c', 'y', 'y', 'a') in generated_instances)
+            #     print("('b', 'x', 'x', 'c') in generated_instances:", ('b', 'x', 'x', 'c') in generated_instances)
+            #     print("('a', 'z', 'z', 'b') in generated_instances:", ('a', 'z', 'z', 'b') in generated_instances)
+            #     print()
+
+            if generated_paras != theorem_gdl['paras']:  # ensure consistent paras order
+                adjust_ids = tuple([generated_paras.index(p) for p in theorem_gdl['paras']])
+                adjusted_generated_instances = set()
+                for generated_instance in generated_instances:
+                    adjusted_generated_instances.add(tuple([generated_instance[i] for i in adjust_ids]))
+                generated_instances = adjusted_generated_instances
+
+            self.theorem_instances[theorem_name] = {}
+            for generated_instance in sorted(list(generated_instances), key=str):  # generate premises and conclusion
+                replace = dict(zip(theorem_gdl['paras'], generated_instance))
+                premises = self._generate_premises(theorem_gdl['premises'], replace)
+                conclusion = self._generate_conclusion(theorem_gdl['conclusion'], replace)
+                self.theorem_instances[theorem_name][generated_instance] = (premises, conclusion)
+                # if theorem_name == 'equal_angle_property_algebraic':
+                #     print(generated_instance, premises, conclusion)
+
+        return list(self.theorem_instances[theorem_name].keys())
+
+    def _generate_instances(self, gpl_tree, paras_and_instances=None):
+        if _is_negation(gpl_tree):  # negative form
+            paras, instances = paras_and_instances
+            negation_paras, negation_instances = self._generate_instances(gpl_tree[1])
+            for instance in instances.copy():
+                if tuple([instance[paras.index(p)] for p in negation_paras]) in negation_instances:
+                    instances.remove(instance)
+            return paras, instances
+        elif _is_conjunction(gpl_tree):  # conjunction
+            left_paras_and_instances = self._generate_instances(gpl_tree[0], paras_and_instances)
+            right_paras_and_instances = self._generate_instances(gpl_tree[2], left_paras_and_instances)
+            # if str(gpl_tree[0]) == "('Eq', lm.ma - xy.ma)":
+            #     print(left_paras_and_instances[0])
+            #     print(left_paras_and_instances[1])
+            #     print("('c', 'y', 'y', 'a') in left_paras_and_instances[1]:", ('c', 'y', 'y', 'a') in left_paras_and_instances[1])
+            #     print("('b', 'x', 'x', 'c') in left_paras_and_instances[1]:", ('b', 'x', 'x', 'c') in left_paras_and_instances[1])
+            #     print("('a', 'z', 'z', 'b') in left_paras_and_instances[1]:", ('a', 'z', 'z', 'b') in left_paras_and_instances[1])
+            #     print()
+            #     print(right_paras_and_instances[0])
+            #     print(right_paras_and_instances[1])
+            #     print("('c', 'y', 'y', 'a') in right_paras_and_instances[1]:", ('c', 'y', 'y', 'a') in right_paras_and_instances[1])
+            #     print("('b', 'x', 'x', 'c') in right_paras_and_instances[1]:", ('b', 'x', 'x', 'c') in right_paras_and_instances[1])
+            #     print("('a', 'z', 'z', 'b') in right_paras_and_instances[1]:", ('a', 'z', 'z', 'b') in right_paras_and_instances[1])
+
+            return right_paras_and_instances
+        elif _is_disjunction(gpl_tree):  # disjunction
+            left_paras, left_instances = self._generate_instances(gpl_tree[0], paras_and_instances)
+            right_paras, right_instances = self._generate_instances(gpl_tree[2], paras_and_instances)
+            if left_paras == right_paras:  # merge left and right
+                left_instances.update(right_instances)
+            else:
+                adjust_ids = tuple([right_paras.index(p) for p in left_paras])
+                for right_instance in right_instances:  # left and right must have the same paras structure
+                    left_instances.add(tuple([right_instance[i] for i in adjust_ids]))
+            return left_paras, left_instances
+        else:  # atomic form
+            gpl_predicate, gpl_paras = gpl_tree
+            if gpl_predicate == 'Eq':
+                gpl_paras = _parse_expr_to_algebraic_forms(gpl_paras, self.parsed_gdl)
+
+            paras = []
+            instances = {()}
+            if paras_and_instances is not None:
+                paras = list(paras_and_instances[0])  # list
+                instances = paras_and_instances[1]  # set
+
+            # if str(gpl_tree) == "('Eq', lm.ma - xy.ma)":
+            #     print(gpl_tree)
+            #     print(paras)
+            #     print(instances)
+
+            if gpl_predicate in {'Eq', 'G', 'Geq', 'L', 'Leq', 'Ueq'}:  # generate instances according algebraic forms
+                dependent_entities = _get_geometric_constraints(gpl_predicate, gpl_paras, self.parsed_gdl)
+
+                for entity_predicate, entity_paras in dependent_entities:  # constrained cartesian product
+                    if entity_paras[0] in paras:
+                        continue
+                    paras.append(entity_paras[0])
+
+                    new_instances = set()
+                    for instance in instances:
+                        for entity_instance in self.relation_instances[entity_predicate]:
+                            new_instance = list(instance)
+                            new_instance.append(entity_instance[0])
+                            new_instances.add(tuple(new_instance))
+                    instances = new_instances
+
+                for instance in instances.copy():  # check constraint
+                    replace = dict(zip(paras, instance))
+                    replaced_expr = _replace_expr(gpl_paras, replace)
+                    if not _satisfy_algebraic[gpl_predicate](replaced_expr, self.entity_sym_to_value):
+                        instances.remove(instance)
+
+                # if str(gpl_tree) == "('Eq', lm.ma - xy.ma)":
+                #     print(gpl_tree)
+                #     print(paras)
+                #     print(instances)
+                #     print("('c', 'y', 'y', 'a') in instances:", ('c', 'y', 'y', 'a') in instances)
+                #     print("('b', 'x', 'x', 'c') in instances:", ('b', 'x', 'x', 'c') in instances)
+                #     print("('a', 'z', 'z', 'b') in instances:", ('a', 'z', 'z', 'b') in instances)
+
+            else:  # generate instances according relation
+                internal_same_ids = []  # [(j_a, j_b)]
+                for j_a in range(len(gpl_paras)):
+                    for j_b in range(j_a + 1, len(gpl_paras)):
+                        if gpl_paras[j_a] == gpl_paras[j_b]:
+                            internal_same_ids.append((j_a, j_b))
+                mutual_same_ids = []  # [(i, j)]
+                for i in range(len(paras)):
+                    for j in range(len(gpl_paras)):
+                        if paras[i] == gpl_paras[j]:
+                            mutual_same_ids.append((i, j))
+                added_ids = []  # [j]
+                for j in range(len(gpl_paras)):
+                    if gpl_paras[j] not in paras:
+                        paras.append(gpl_paras[j])
+                        added_ids.append(j)
+
+                if gpl_predicate in self.relation_instances:  # dependent relation instances has been generated
+                    gpl_instances = self.relation_instances[gpl_predicate]
+
+                else:  # iteratively generate dependent relation instances
+                    relation_gpl = self.parsed_gdl['Relations'][gpl_predicate]
+                    gpl_paras, gpl_instances = self._generate_instances(relation_gpl['algebraic_forms'])
+
+                    if gpl_paras != relation_gpl['paras']:
+                        adjust_ids = tuple([gpl_paras.index(p) for p in relation_gpl['paras']])
+                        adjusted_gpl_instances = set()
+                        for gpl_instance in gpl_instances:
+                            adjusted_gpl_instances.add(tuple([gpl_instance[i] for i in adjust_ids]))
+                        gpl_instances = adjusted_gpl_instances
+
+                    self.relation_instances[gpl_predicate] = gpl_instances
+
+                new_instances = []
+                for gpl_instance in gpl_instances:  # constrained cartesian product
+                    passed = True
+                    for j_a, j_b in internal_same_ids:  # check internal constraint
+                        if gpl_instance[j_a] != gpl_instance[j_b]:
+                            passed = False
+                            break
+                    if not passed:
+                        continue
+
+                    for instance in instances:
+                        passed = True
+                        for i, j in mutual_same_ids:  # check mutual constraint
+                            if instance[i] != gpl_instance[j]:
+                                passed = False
+                                break
+                        if not passed:
+                            continue
+
+                        new_instance = list(instance)
+                        new_instance.extend([gpl_instance[j] for j in added_ids])
+                        new_instances.append(tuple(new_instance))
+
+                instances = new_instances
+
+            return tuple(paras), instances
+
+    def _generate_premises(self, premises_gpl, replace):
+        if _is_negation(premises_gpl):  # remove negative form : ('~', ...)
+            return None
+
+        elif _is_conjunction(premises_gpl):  # conjunction : (..., '&', ...)
+            left_side = self._generate_premises(premises_gpl[0], replace)
+            right_side = self._generate_premises(premises_gpl[2], replace)
+            if left_side is not None:
+                if right_side is not None:
+                    return left_side, '&', right_side
+                else:
+                    return left_side
+            else:
+                if right_side is not None:
+                    return right_side
+                else:
+                    return None
+
+        elif _is_disjunction(premises_gpl):  # disjunction: (..., '|', ...)
+            left_side = self._generate_premises(premises_gpl[0], replace)
+            right_side = self._generate_premises(premises_gpl[2], replace)
+            if left_side is not None and right_side is not None:
+                return left_side, '|', right_side
+            else:
+                return None
+
+        else:  # atomic node: (predicate, instance)
+            predicate, instance = premises_gpl
+            if predicate == 'Eq':
+                instance = self._adjust_expr(_replace_expr(instance, replace))
+            else:
+                instance = _replace_instance(instance, replace)
+
+            return predicate, instance
+
+    def _generate_conclusion(self, conclusion_gpl, replace):
+        predicate, instance = conclusion_gpl
+        if predicate == 'Eq':
+            instance = self._adjust_expr(_replace_expr(instance, replace))
         else:
-            for predicate, instance in zip(self.parsed_gdl['Relations'][predicate]['ee_check'], instance):
-                dependent_entities.add((predicate, (instance,)))
-        return sorted(list(dependent_entities), key=lambda x: x[1])
+            instance = _replace_instance(instance, replace)
 
-    def _get_existed_dependent_entities(self, predicate, instance):
-        entities = set()
-        if predicate == 'Equation':
-            for sym in instance.free_symbols:
-                entity, sym = str(sym).split('.')
-                entities.update(list(entity))
-        else:
-            entities.update(instance)
+        return predicate, instance
 
-        dependent_entities = []
-        for entity in entities:
-            dependent_entities.append((self.entity_map[entity], (entity,)))
+    def _adjust_expr(self, expr):
+        """
+        1.添加Eq facts时 √
+        2.添加Eq goal时 √
+        3.生成premises和conclusion时 √
+        """
+        for sym in list(expr.free_symbols):
+            if sym not in self.sym_to_sym:  # new symbols
+                entities, attr = str(sym).split('.')
+                replace = dict(zip(self.parsed_gdl['Attributions'][attr]['paras'], entities))
+                self.sym_to_syms[sym] = set()
+                for sym_multiple_form in self.parsed_gdl['Attributions'][attr]['multiple_forms']:
+                    sym_multiple_form = symbols(''.join([replace[e] for e in sym_multiple_form]) + '.' + attr)
+                    self.sym_to_syms[sym].add(sym_multiple_form)
+                    self.sym_to_sym[sym_multiple_form] = sym
 
-        return sorted(dependent_entities, key=lambda x: x[1])
+            if sym != self.sym_to_sym[sym]:  # replace sym_multiple_form with sym_unified_form
+                expr = expr.subs(sym, self.sym_to_sym[sym])
 
-    def _get_entity_ids(self, predicate, instance):
-        entity_ids = []
-        for dependent_entity in self._get_existed_dependent_entities(predicate, instance):
-            entity_ids.append(self.id[dependent_entity])
-        return entity_ids
+        if str(expr)[0] == '-':  # adjust to a form without a leading negative sign
+            expr = -expr
+
+        return expr
+
+    """↑--------Instance Generation-------↑"""
+
+    """↓----------Forward Solving---------↓"""
 
     def apply(self, theorem):
-        """Apply a theorem.
-        1.这里是详细的功能描述，可以跨越多行。
-        2.第二段通常描述实现细节或算法原理。
-        3.solver部分的推理，得到新的fact
+        """Apply a theorem with parameterized form or parameter-free form.
 
         Args:
             theorem (str): Theorem to be applied. Two forms: a parameterized form and a parameter-free form.
-            examples: 'adjacent_complementary_angle(l,k)'  # parameterized form
-                      'adjacent_complementary_angle'  # parameter-free form
+                examples: 'adjacent_complementary_angle(l,k)'  # parameterized form
+                          'adjacent_complementary_angle'  # parameter-free form
 
         Returns:
             result (bool): If applying the theorem adds new conditions, return True; otherwise, return False.
         """
-        if '(' in theorem:
-            theorem_name, theorem_paras = parse_fact(theorem)
-        else:
-            theorem_name = theorem
-            theorem_paras = None
-        if theorem_name not in self.parsed_gdl["Theorems"]:
-            e_msg = f"Unknown theorem name: '{theorem_name}'."
-            raise Exception(e_msg)
+        theorem_name, theorem_instance = _parse_theorem(theorem, self.parsed_gdl)
+        theorem_gdl = self.parsed_gdl["Theorems"][theorem_name]
+        applied = []  # (conclusion, premise_ids, theorem_instance)
 
-        added = False
-        if theorem_paras is not None:  # parameterized form
-            if len(theorem_paras) != len(self.parsed_gdl["Theorems"][theorem_name]['paras']):
-                e_msg = f"Theorem '{theorem_name}' has wrong number of paras."
-                raise Exception(e_msg)
-
-            theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
-            replace = dict(zip(theorem_gdl['paras'], theorem_paras))
-            premise_ids = []
-
-            for gpl_one_term in theorem_gdl['gpl']:  # run gdl with theorem parameter ()
-                product = gpl_one_term['product']
-                ac_checks = gpl_one_term['ac_checks']
-                geometric_premises = gpl_one_term['geometric_premises']
-                algebraic_premises = gpl_one_term['algebraic_premises']
-                predicate = product[0]
-                instance = tuple(replace_paras(product[1], replace))
-
-                if (predicate, instance) not in self.id:  # verification mode, not cartesian product
+        if theorem_instance is not None:  # parameterized mode
+            if theorem_name in self.theorem_instances:
+                if theorem_instance not in self.theorem_instances[theorem_name]:
                     return False
-                premise_ids.append(self.id[(predicate, instance)])
 
-                # check constraints
-                passed, premise_ids = self._pass_constraints(
-                    geometric_premises, ac_checks, algebraic_premises, replace)
+                premises, conclusion = self.theorem_instances[theorem_name][theorem_instance]
+
+                passed, premise_ids = self._check_premises(premises)  # check premises
                 if not passed:
                     return False
-                premise_ids.extend(premise_ids)
 
-            # add operation
-            operation_id = self._add_operation(theorem)
+                # remove applied theorem_instance
+                self.theorem_instances[theorem_name].pop(theorem_instance)
 
-            # add conclusions
-            added = self._add_conclusions(theorem_gdl['conclusions'], replace, premise_ids, operation_id) or added
-        else:  # parameter-free form
-            theorem_gdl = self.parsed_gdl['Theorems'][theorem_name]
-
-            paras, instances, premise_ids = self._run_gpl(theorem_gdl['gpl'])
-            for i in range(len(instances)):
-                replace = dict(zip(paras, instances[i]))
-
-                # add operation
-                theorem_paras = replace_paras(theorem_gdl['paras'], replace)
-                operation_id = self._add_operation(theorem_name + '(' + ','.join(theorem_paras) + ')')
-
-                # add conclusions
-                added = self._add_conclusions(
-                    theorem_gdl['conclusions'], replace, premise_ids[i], operation_id
-                ) or added
-
-        return added
-
-    def _run_gpl(self, gpl):
-        paras = []
-        instances = [[]]
-        premise_ids = [[]]
-
-        for gpl_one_term in gpl:
-            product = gpl_one_term['product']  # (predicate, paras, inherent_same_index, mutual_same_index, added_index)
-            ac_checks = gpl_one_term['ac_checks']  # [(relation_type, expr)]
-            geometric_premises = gpl_one_term['geometric_premises']  # [(predicate, paras)]
-            algebraic_premises = gpl_one_term['algebraic_premises']  # [expr]
-
-            new_instances = []
-            new_premise_ids = []
-            paras.extend([product[1][j] for j in product[4]])
-            for k in range(len(instances)):
-                instance = instances[k]
-                for product_instance in self.instances_of_predicate[product[0]]:
-                    # check inherent same index constraint
-                    passed = True
-                    for i, j in product[2]:
-                        if product_instance[i] != product_instance[j]:
-                            passed = False
-                            break
-                    if not passed:
-                        continue
-
-                    # check mutual same index constraint
-                    passed = True
-                    for i, j in product[3]:
-                        if instance[i] != product_instance[j]:
-                            passed = False
-                            break
-                    if not passed:
-                        continue
-
-                    # constrained cartesian product: add different letter
-                    new_instance = list(instance)
-                    new_instance.extend([product_instance[j] for j in product[4]])
-
-                    replace = dict(zip(paras, new_instance))
-
-                    # check constraints
-                    passed, constraints_premise_id = self._pass_constraints(
-                        geometric_premises, ac_checks, algebraic_premises, replace)
-                    if not passed:
-                        continue
-
-                    new_premise_id = list(premise_ids[k])
-                    new_premise_id.append(self.id[(product[0], product_instance)])
-                    new_premise_id.extend(constraints_premise_id)
-
-                    new_instances.append(new_instance)
-                    new_premise_ids.append(new_premise_id)
-
-            instances = new_instances
-            premise_ids = new_premise_ids
-
-        return paras, instances, premise_ids
-
-    def _pass_constraints(self, geometric_premises, ac_checks, algebraic_premises, replace):
-        premise_ids = []
-
-        # check geometric premises
-        for predicate, paras in geometric_premises:
-            fact = (predicate, tuple(replace_paras(paras, replace)))
-            if fact not in self.id:
-                return False, None
-            premise_ids.append(self.id[fact])
-
-        # check algebraic constraint of dependent entity
-        for algebraic_relation, expr in ac_checks:
-            expr = replace_expr(expr, replace)
-            if not satisfy_algebra[algebraic_relation](expr, self.value_of_para_sym):
-                return False, None
-
-        # check algebraic premises
-        for expr in algebraic_premises:
-            expr = replace_expr(expr, replace)
-
-            if ('Equation', expr) in self.id:  # expr in self.facts
-                premise_ids.append(self.id[('Equation', expr)])
-                continue
-
-            syms, equations, premise_id = self._get_minimum_dependent_equations(expr)
-            try:
-                solved_values = func_timeout(
-                    timeout=self.timeout,
-                    func=nonlinsolve,
-                    args=(equations, syms)
-                )
-            except FunctionTimedOut:
-                return False, None
-            if solved_values is EmptySet:
-                e_smg = f'Equations no solution: {equations}'
-                raise Exception(e_smg)
-
-            if type(solved_values) is not FiniteSet:
-                return False, None
-
-            solved_values = list(solved_values)
-
-            for solved_value in solved_values:
-                if solved_value[0] != 0:  # t must equal to 0 in every solved value
-                    return False, None
-
-            operation_id = self._add_operation('solve_eq')  # add the solved values of symbols
-            for j in range(1, len(syms)):  # skip symbol t
-                if len(solved_values[0][j].free_symbols) != 0:  # no numeric solution
-                    continue
-
-                same = True
-                for i in range(1, len(solved_values)):
-                    if solved_values[i][j] != solved_values[0][j]:
-                        same = False
-                        break
-                if not same:  # numeric solution not same in every solved result
-                    continue
-
-                self._set_value_of_attr_sym(syms[j], solved_values[0][j], premise_id, operation_id)
-
-            premise_ids += premise_id
-
-        return True, premise_ids
-
-    def _get_minimum_dependent_equations(self, target_expr):
-        syms = [symbols('t')]
-        premise_ids = []
-        for sym in sorted(list(target_expr.free_symbols), key=str):  # sorting ensures reproducibility
-            if sym not in self.value_of_attr_sym:
-                syms.append(sym)
+                applied.append((conclusion, premise_ids, theorem_instance))
             else:
-                premise_ids.append(self.id[('Equation', sym - self.value_of_attr_sym[sym])])
-                target_expr = target_expr.subs({sym: self.value_of_attr_sym[sym]})
-        equations = [syms[0] - target_expr]
+                replace = dict(zip(theorem_gdl['paras'], theorem_instance))
+                premises = self._generate_premises(theorem_gdl['premises'], replace)
 
-        i = 1
-        while i < len(syms):  # find all related equations
-            if syms[i] in self.attr_sym_to_equations:
-                for equation_id in self.attr_sym_to_equations[syms[i]]:
-                    if self.equations[equation_id][0] in equations:
-                        continue
+                passed, premise_ids = self._check_premises(premises)  # check premises
+                if not passed:
+                    return False
 
-                    for sym in sorted(list(self.equations[equation_id][0].free_symbols), key=str):
-                        if sym not in syms:
-                            syms.append(sym)
+                if not self._check_algebraic_forms((theorem_gdl['conclusion'], '&', theorem_gdl['premises']), replace):
+                    return False
 
-                    equations.append(self.equations[equation_id][0])
-                    premise_ids.append(self.equations[equation_id][1])
-                    premise_ids.extend(self.equations[equation_id][2])
-            i += 1
+                conclusion = self._generate_conclusion(theorem_gdl['conclusion'], replace)
+                applied.append((conclusion, premise_ids, theorem_instance))
 
-        return syms, equations, premise_ids
+        else:  # parameter-free mode
+            for theorem_instance in self._get_theorem_instances(theorem_name):
+                premises, conclusion = self.theorem_instances[theorem_name][theorem_instance]
 
-    def _set_value_of_attr_sym(self, sym, value, premise_ids, operation_id):
-        if sym in self.value_of_attr_sym:
+                passed, premise_ids = self._check_premises(premises)  # check premises
+                # if theorem_name == "congruent_triangle_determination_asa" and theorem_instance == ('B', 'b', 'C', 'l', 'A', 'a', 'D', 'd', 'A', 'l', 'C', 'c'):
+                #     print("congruent_triangle_determination_asa", theorem_instance)
+                #     print(premises)
+                #     print(conclusion)
+                #     print(passed)
+                #     print()
+                if not passed:
+                    continue
+
+                # remove applied theorem_instance
+                self.theorem_instances[theorem_name].pop(theorem_instance)
+
+                applied.append((conclusion, premise_ids, theorem_instance))
+
+        update = False
+        affected_sub_goal_ids = set()
+        for conclusion, premise_ids, theorem_instance in applied:
+            operation_id = self._add_operation(('apply', theorem_name, theorem_instance))  # add conclusion
+            added, sub_goal_ids = self._add_fact(conclusion[0], conclusion[1], premise_ids, operation_id)
+            update = added or update
+            affected_sub_goal_ids.update(sub_goal_ids)
+
+        # check affected sub goals
+        self._check_sub_goals(affected_sub_goal_ids)
+
+        return update
+
+    def _check_premises(self, premises):
+        if _is_conjunction(premises):  # conjunction : (..., '&', ...)
+            left_passed, left_premise_ids = self._check_premises(premises[0])
+            if not left_passed:
+                return False, None
+
+            right_passed, right_premise_ids = self._check_premises(premises[2])
+            if not right_passed:
+                return False, None
+
+            left_premise_ids.update(right_premise_ids)
+
+            return True, left_premise_ids
+
+        elif _is_disjunction(premises):  # disjunction: (..., '|', ...)
+            left_passed, left_premise_ids = self._check_premises(premises[0])
+            if left_passed:
+                return True, left_premise_ids
+
+            right_passed, right_premise_ids = self._check_premises(premises[2])
+            if right_passed:
+                return True, right_premise_ids
+
+            return False, None
+
+        else:  # atomic node: (predicate, instance)
+            predicate, instance = premises
+            # print(premises)
+            if predicate == 'Eq':  # algebraic premise
+                status, premise_ids = self._check_algebraic_premise(instance)
+                # print(predicate, instance, status)
+                if status == 1:
+                    return True, premise_ids
+
+            else:  # geometric premise
+                if premises in self.fact_id:
+                    return True, {self.fact_id[premises]}
+
+            return False, None
+
+    def _check_algebraic_premise(self, expr):
+        """return status, premise_ids
+        status=1 solved
+        status=-1 unsolved
+        status=0 no solution
+        """
+        if ('Eq', expr) in self.fact_id:  # expr in self.facts
+            return 1, {self.fact_id[('Eq', expr)]}
+
+        premise_ids = set()
+        for sym in list(expr.free_symbols):
+            if sym in self.sym_to_value:
+                premise_ids.add(self.fact_id[('Eq', sym - self.sym_to_value[sym])])
+                expr = expr.subs(sym, self.sym_to_value[sym])
+
+        if len(expr.free_symbols) == 0:
+            if _satisfy_algebraic['Eq'](expr):
+                return 1, premise_ids
+            return -1, None
+
+        if expr in self.solved_target_cache:
+            return 1, self.solved_target_cache[expr] | premise_ids
+
+        target_sym = symbols('t')
+        equations = [target_sym - expr]
+        syms = set(expr.free_symbols)
+        for group_id in self.equations:
+            if len(self.equations[group_id][2] & expr.free_symbols) > 0:
+                equations.extend(self.equations[group_id][0])
+                for eq_premise_ids in self.equations[group_id][1]:
+                    premise_ids.update(eq_premise_ids)
+                syms.update(self.equations[group_id][2])
+        syms = [target_sym] + list(syms)
+
+        equations_tuple = tuple(sorted(equations, key=str))
+        if equations_tuple in self.attempted_equations_cache:
+            return self.attempted_equations_cache[equations_tuple], None
+        self.attempted_equations_cache[equations_tuple] = 0
+
+        try:
+            equation_solutions = func_timeout(
+                timeout=self.timeout,
+                func=nonlinsolve,
+                args=(equations, syms)
+            )
+        except FunctionTimedOut:
+            return 0, None
+
+        if equation_solutions is EmptySet:
+            e_smg = f'Equations no solution: {equations}'
+            raise Exception(e_smg)
+
+        if type(equation_solutions) is not FiniteSet:
+            return 0, None
+
+        for solved_value in list(equation_solutions):
+            if solved_value[0] != 0:  # in every solution, the solved value of target_sym must be 0
+                if len(solved_value[0].free_symbols) == 0:
+                    self.attempted_equations_cache[equations_tuple] = -1
+                    return -1, None
+                return 0, None
+
+        self.solved_target_cache[expr] = premise_ids
+
+        return 1, premise_ids
+
+    def _check_algebraic_forms(self, algebraic_forms, replace=None):
+        """
+        1.前向求解，参数化运行，退化条件：~的检查
+        2.后向 set goal和参数化分解goal时的检查，只有合理的goal才会分解
+        """
+        if _is_negation(algebraic_forms):  # negative form : ('~', ...)
+            return not self._check_algebraic_forms(algebraic_forms[1], replace)
+
+        elif _is_conjunction(algebraic_forms):  # conjunction : (..., '&', ...)
+            if not self._check_algebraic_forms(algebraic_forms[0], replace):
+                return False
+            if not self._check_algebraic_forms(algebraic_forms[2], replace):
+                return False
+            return True
+
+        elif _is_disjunction(algebraic_forms):  # disjunction: (..., '|', ...)
+            if self._check_algebraic_forms(algebraic_forms[0], replace):
+                return True
+            if self._check_algebraic_forms(algebraic_forms[2], replace):
+                return True
             return False
 
-        self.value_of_attr_sym[sym] = value
-        entity_ids = self._get_entity_ids('Equation', sym - value)
-        added = self._add_fact('Equation', sym - value, premise_ids, entity_ids, operation_id)
+        else:  # atomic node: (predicate, instance)
+            predicate, instance = algebraic_forms
 
-        for equation_id in self.attr_sym_to_equations[sym]:
-            self.equations[equation_id][0] = self.equations[equation_id][0].subs({sym: value})
-            self.equations[equation_id][2].append(self.id[('Equation', sym - value)])
-        self.attr_sym_to_equations.pop(sym)
+            if predicate == 'Eq':
+                instance = _parse_expr_to_algebraic_forms(instance, self.parsed_gdl)
+
+            if predicate in {'Eq', 'G', 'Geq', 'L', 'Leq', 'Ueq'}:  # algebraic forms
+                if replace is not None:
+                    instance = _replace_expr(instance, replace)
+
+                return _satisfy_algebraic[predicate](instance, self.entity_sym_to_value)
+
+            else:  # geometric forms
+                if replace is not None:
+                    instance = _replace_instance(instance, replace)
+
+                if predicate in self.relation_instances:
+                    return instance in self.relation_instances[predicate]
+
+                relation_gdl = self.parsed_gdl['Relations'][predicate]
+                replace = dict(zip(relation_gdl['paras'], instance))
+
+                return self._check_algebraic_forms(relation_gdl['algebraic_forms'], replace)
+
+    def _add_fact(self, predicate, instance, premise_ids, operation_id):
+        if predicate == 'Eq':
+            return self._add_equation(predicate, instance, premise_ids, operation_id)
+        elif predicate in {'Point', 'Line', 'Circle'}:
+            return self._add_entity(predicate, instance, premise_ids, operation_id)
+        elif predicate in {'SamePoint', 'SameLine', 'SameCircle'}:
+            return self._add_same(predicate, instance, premise_ids, operation_id)
+        else:
+            return self._add_relation(predicate, instance, premise_ids, operation_id)
+
+    def _add_entity(self, predicate, instance, premise_ids, operation_id):
+        if (predicate, instance) in self.fact_id or instance[0] not in self.letters:
+            return False, set()
+
+        fact_id = len(self.facts)
+        self.facts.append((predicate, instance, set(premise_ids), set(premise_ids), operation_id))
+        self.fact_id[(predicate, instance)] = fact_id
+        self.predicate_to_fact_ids[predicate].add(fact_id)
+        self.fact_groups[operation_id].add(fact_id)
+
+        self.relation_instances[predicate].add(instance)
+        self.letters.remove(instance[0])
+
+        return True, set()
+
+    def _add_relation(self, predicate, instance, premise_ids, operation_id):
+        if (predicate, instance) in self.fact_id:
+            return False, set()
+
+        fact_id = len(self.facts)
+        entity_ids = set()
+        for dependent_entity in _get_geometric_constraints(predicate, instance, self.parsed_gdl):
+            entity_ids.add(self.fact_id[dependent_entity])
+        self.facts.append((predicate, instance, set(premise_ids), entity_ids, operation_id))
+        self.fact_id[(predicate, instance)] = fact_id
+        self.predicate_to_fact_ids[predicate].add(fact_id)
+        self.fact_groups[operation_id].add(fact_id)
+
+        affected_sub_goal_ids = set()
+        if (predicate, instance) in self.sub_goal_ids:
+            affected_sub_goal_ids = self.sub_goal_ids[(predicate, instance)]
+
+        return True, affected_sub_goal_ids
+
+    def _add_same(self, predicate, instance, premise_ids, operation_id):
+        """Add SamePoint, SameLine, and SameCircle, and remove redundant facts. For two equivalent entities A and B:
+        1.Sort entities and take entity comes later in the sorted order (entity B) as removed entity.
+        2.Replace B with A in all relations and add new relation to self.facts.
+        3.For any symbols in self.sym_to_value, if contain B, add A.sym - self.sym_to_value[B.sym] to self.facts.
+        4.For any symbols in self.equations, if contain A or B, add A.sym - B.sym to self.facts.
+        """
+        if instance[0] == instance[1]:
+            return False, set()
+
+        instance = sorted([instance, (instance[1], instance[0])])[0]
+        A, B = instance
+
+        if (predicate, instance) in self.fact_id:
+            return False, set()
+
+        fact_id = len(self.facts)
+        entity_ids = set()
+        for dependent_entity in _get_geometric_constraints(predicate, instance, self.parsed_gdl):
+            entity_ids.add(self.fact_id[dependent_entity])
+        self.facts.append((predicate, instance, set(premise_ids), set(entity_ids), operation_id))
+        self.fact_id[(predicate, instance)] = fact_id
+        self.predicate_to_fact_ids[predicate].add(fact_id)
+        self.fact_groups[operation_id].add(fact_id)
+        affected_goal_ids = set()
+
+        # Replace B with A in all relations and add new relation to self.facts
+        for b_fact_id in range(len(self.facts)):
+            predicate, instance, _, _, _ = self.facts[b_fact_id]
+            if predicate in {'Equation', 'Point', 'Line', 'Circle', 'SamePoint', 'SameLine', 'SameCircle'}:
+                continue
+            if B not in instance:
+                continue
+            instance = tuple([e if e != B else A for e in instance])
+            operation_id = self._add_operation(('auto', 'same_entity_extend', None))
+            _, sub_goal_ids = self._add_fact(predicate, instance, {fact_id, b_fact_id}, operation_id)
+            affected_goal_ids.update(sub_goal_ids)
+
+        # For any symbols in self.sym_to_value, if contain B, add A.sym - self.sym_to_value[B.sym] to self.facts
+        for b_sym in self.sym_to_value:
+            entities, attr = str(b_sym).split('.')
+            if B not in entities:
+                continue
+            a_sym = symbols(entities.replace(B, A) + '.' + attr)
+            if a_sym in self.sym_to_value:
+                continue
+            instance = a_sym - self.sym_to_value[b_sym]
+            b_fact_id = self.fact_id[('Eq', instance)]
+            operation_id = self._add_operation(('auto', 'same_entity_extend', None))
+            _, sub_goal_ids = self._add_fact('Eq', instance, {fact_id, b_fact_id}, operation_id)
+            affected_goal_ids.update(sub_goal_ids)
+
+        # For any symbols in self.equations, if contain A or B, add A.sym - B.sym to self.facts
+        added_eqs = set()
+        for group_id in self.equations:
+            for sym in self.equations[group_id][2]:
+                entities, attr = str(sym).split('.')
+                if A in entities:
+                    added_eqs.add(sym - symbols(entities.replace(A, B) + '.' + attr))
+                elif B in entities:
+                    added_eqs.add(sym - symbols(entities.replace(B, A) + '.' + attr))
+        for instance in added_eqs:
+            operation_id = self._add_operation(('auto', 'same_entity_extend', None))
+            _, sub_goal_ids = self._add_fact('Eq', instance, {fact_id}, operation_id)
+            affected_goal_ids.update(sub_goal_ids)
+
+        return True, affected_goal_ids
+
+    def _add_equation(self, predicate, instance, premise_ids, operation_id):
+        instance = self._adjust_expr(instance)
+        if len(instance.free_symbols) == 0 or (predicate, instance) in self.fact_id:
+            return False, set()
+
+        fact_id = len(self.facts)
+        entity_ids = set()
+        for dependent_entity in _get_geometric_constraints(predicate, instance, self.parsed_gdl):
+            entity_ids.add(self.fact_id[dependent_entity])
+        self.facts.append((predicate, instance, set(premise_ids), set(entity_ids), operation_id))
+        self.fact_id[(predicate, instance)] = fact_id
+        self.predicate_to_fact_ids[predicate].add(fact_id)
+        self.fact_groups[operation_id].add(fact_id)
+
+        if self.operations[operation_id] == ('auto', 'solve_eq', None):
+            return True, set()
+
+        new_simplified_eqs = [instance]
+        new_premise_ids_list = [{fact_id}]
+        new_syms = set()
+
+        # replace solved sym with its value
+        for sym in instance.free_symbols:
+            if sym in self.sym_to_value:
+                new_simplified_eqs[0] = new_simplified_eqs[0].subs(sym, self.sym_to_value[sym])
+                new_premise_ids_list[0].add(self.fact_id[('Eq', sym - self.sym_to_value[sym])])
+            else:
+                new_syms.add(sym)
+
+        if len(new_syms) == 0:  # no unsolved sym
+            return True, set()
+
+        # merge equations group
+        deleted_group_ids = set()
+        for group_id in self.equations:
+            simplified_eqs, premise_ids_list, syms = self.equations[group_id]
+            if len(new_syms & syms) > 0:
+                deleted_group_ids.add(group_id)
+                new_simplified_eqs.extend(simplified_eqs)
+                new_premise_ids_list.extend(premise_ids_list)
+                new_syms.update(syms)
+
+        # print("self.equations:", self.equations)
+        # print("instance:", instance)
+        # print("deleted_group_ids:", deleted_group_ids)
+        for group_id in deleted_group_ids:  # delete old groups
+            del self.equations[group_id]
+
+        affected_sub_goal_ids = set()  # influenced sub_goals
+        for sub_goal_id in self.simplified_eq_sub_goal:
+            if len(new_syms & self.simplified_eq_sub_goal[sub_goal_id][2]) > 0:
+                affected_sub_goal_ids.add(sub_goal_id)
+        # print("sub_goal_ids:", sub_goal_ids)
+        # print()
+        # solve equations
+        new_syms = list(new_syms)
+        solved_values = {}
+        try:
+            solutions = func_timeout(timeout=self.timeout, func=nonlinsolve, args=(new_simplified_eqs, new_syms))
+            if solutions is EmptySet:
+                e_smg = f'Equations no solution: {new_simplified_eqs}'
+                raise Exception(e_smg)
+
+            if type(solutions) is FiniteSet and len(solutions) > 0:
+                solutions = list(solutions)
+
+                for j in range(len(new_syms)):
+                    if len(solutions[0][j].free_symbols) != 0:  # no numeric solution
+                        continue
+
+                    same = True
+                    for i in range(1, len(solutions)):
+                        if solutions[i][j] != solutions[0][j]:
+                            same = False
+                            break
+                    if not same:  # numeric solution not same in every solved result
+                        continue
+
+                    solved_values[new_syms[j]] = solutions[0][j]  # save solved value
+        except FunctionTimedOut:
+            pass
+
+        # split equations group
+        if len(solved_values) == 0:  # no solved value
+            self.equations[self.group_count] = (tuple(new_simplified_eqs), tuple(new_premise_ids_list), set(new_syms))
+            self.group_count += 1
+            return True, affected_sub_goal_ids
+
+        operation_id = self._add_operation(('auto', 'solve_eq', None))  # add the solved values
+        premise_ids = set()
+        for new_premise_ids in new_premise_ids_list:
+            premise_ids.update(new_premise_ids)
+        for sym in solved_values:
+            instance = sym - solved_values[sym]
+            self.sym_to_value[sym] = solved_values[sym]
+            self._add_fact('Eq', instance, premise_ids, operation_id)
+
+        for i in range(len(new_simplified_eqs)):  # replace sym with it's solved value
+            for sym in new_simplified_eqs[i].free_symbols:
+                if sym in solved_values:
+                    new_simplified_eqs[i] = new_simplified_eqs[i].subs(sym, solved_values[sym])
+                    new_premise_ids_list[i].add(self.fact_id[('Eq', sym - solved_values[sym])])
+
+        while len(new_simplified_eqs) > 0:
+            if len(new_simplified_eqs[0].free_symbols) == 0:  # no unsolved sym, skip
+                new_simplified_eqs.pop(0)
+                new_premise_ids_list.pop(0)
+                continue
+
+            simplified_eqs = [new_simplified_eqs.pop(0)]
+            premise_ids_list = [new_premise_ids_list.pop(0)]
+            syms = set(simplified_eqs[0].free_symbols)
+            update = True
+            while update:
+                update = False
+                for i in range(len(new_simplified_eqs))[::-1]:
+                    if len(syms & new_simplified_eqs[i].free_symbols) > 0:
+                        simplified_eqs.append(new_simplified_eqs.pop(i))
+                        premise_ids_list.append(new_premise_ids_list.pop(i))
+                        syms.update(simplified_eqs[-1].free_symbols)
+                        update = True
+            self.equations[self.group_count] = (tuple(simplified_eqs), tuple(premise_ids_list), set(syms))
+            self.group_count += 1
+
+        return True, affected_sub_goal_ids
+
+    def _add_operation(self, operation):
+        operation_id = len(self.operations)
+        self.operations.append(operation)
+        self.fact_groups[operation_id] = set()
+        return operation_id
+
+    """↑----------Forward Solving---------↑"""
+
+    """↓---------Backward Solving---------↓"""
+
+    def set_goal(self, goal):
+        if len(self.goals) > 0:
+            raise Exception("The function 'set_goal' is only used to set the initial goal.")
+
+        goal_tree = _parse_goal(goal)
+        # draw_gpl(goal_tree, filename='goal_tree')
+
+        if not self._check_algebraic_forms(goal_tree):
+            raise Exception(f"Algebraic forms check not passed when set init goal '{goal}'.")
+
+        operation_id = self._add_operation(('auto', "set_initial_goal", None))
+        added, sub_goal_ids = self._add_goal(goal_tree, operation_id, None)
+
+        self._check_sub_goals(sub_goal_ids)  # update influenced sub goals
 
         return added
 
-    def _add_conclusions(self, conclusions, replace, premise_ids, operation_id):
-        add_new_fact = False
-        for predicate, instance in conclusions:
-            if predicate == "Equation":
-                instance = replace_expr(instance, replace)
-                if len(instance.free_symbols) == 0:
-                    continue
+    def decompose(self, theorem):
+        """decompose according to theorem."""
+        theorem_name, theorem_instance = _parse_theorem(theorem, self.parsed_gdl)
+        theorem_gdl = self.parsed_gdl["Theorems"][theorem_name]
+        decomposed = []  # (premises, root_sub_goal_ids, theorem_instance)
+
+        if theorem_instance is not None:  # parameterized mode
+            if theorem_name in self.theorem_instances:
+                if theorem_instance not in self.theorem_instances[theorem_name]:
+                    return False
+                premises, conclusion = self.theorem_instances[theorem_name][theorem_instance]
+                root_sub_goal_ids = self._get_decomposed_sub_goal_ids(conclusion)
+                if len(root_sub_goal_ids) == 0:
+                    return False
+                decomposed.append((premises, root_sub_goal_ids, theorem_instance))
             else:
-                instance = tuple(replace_paras(instance, replace))
-            entity_ids = self._get_entity_ids(predicate, instance)
-            add_new_fact = self._add_fact(predicate, instance, premise_ids, entity_ids, operation_id) or add_new_fact
-        return add_new_fact
+                replace = dict(zip(theorem_gdl['paras'], theorem_instance))
+                conclusion = self._generate_conclusion(theorem_gdl['premises'], replace)
+                root_sub_goal_ids = self._get_decomposed_sub_goal_ids(conclusion)
+                if len(root_sub_goal_ids) == 0:
+                    return False
+                if not self._check_algebraic_forms(theorem_gdl['premises'], replace):
+                    return False
+                premises = self._generate_premises(theorem_gdl['premises'], replace)
+                decomposed.append((premises, root_sub_goal_ids, theorem_instance))
+
+        else:  # parameter-free mode
+            for theorem_instance in self._get_theorem_instances(theorem_name):
+                premises, conclusion = self.theorem_instances[theorem_name][theorem_instance]
+                sub_goal_ids = self._get_decomposed_sub_goal_ids(conclusion)
+                if len(sub_goal_ids) == 0:
+                    continue
+                decomposed.append((premises, sub_goal_ids, theorem_instance))
+
+        update = False
+        affected_sub_goal_ids = set()
+        for premises, root_sub_goal_ids, theorem_instance in decomposed:
+            for sub_goal_id in root_sub_goal_ids:
+                operation_id = self._add_operation(('decompose', theorem_name, theorem_instance))
+                decomposed, sub_goal_ids = self._add_goal(premises, operation_id, sub_goal_id)
+                affected_sub_goal_ids.update(sub_goal_ids)
+                update = decomposed or update
+
+        # check affected sub goals
+        self._check_sub_goals(affected_sub_goal_ids)
+
+        return update
+
+    def _get_decomposed_sub_goal_ids(self, conclusion):
+        root_sub_goal_ids = set()
+
+        if conclusion[0] == 'Eq':  # algebraic goals
+            for sub_goal_id in self.simplified_eq_sub_goal:
+                if self.status_of_goal[self.sub_goals[sub_goal_id][2]] != 0:
+                    continue
+                if self.status_of_sub_goal[sub_goal_id] != 0:
+                    continue
+                if len(self.simplified_eq_sub_goal[sub_goal_id][2] & conclusion[1].free_symbols) == 0:
+                    continue
+                root_sub_goal_ids.add(sub_goal_id)
+
+        else:  # geometric goals
+            if conclusion in self.sub_goal_ids:
+                for sub_goal_id in self.sub_goal_ids[conclusion]:
+                    if self.status_of_goal[self.sub_goals[sub_goal_id][2]] != 0:
+                        continue
+                    if self.status_of_sub_goal[sub_goal_id] != 0:
+                        continue
+                    root_sub_goal_ids.add(sub_goal_id)
+
+        return root_sub_goal_ids
+
+    def _add_goal(self, sub_goal_tree, operation_id, root_sub_goal_id):
+        if root_sub_goal_id is not None:
+            # root goal has already been solved and does not need to be further decomposed
+            if self.status_of_goal[self.sub_goals[root_sub_goal_id][2]] != 0:
+                return False, set()
+
+            # check if sibling goals contain the same operation
+            for goal_id in self.leaf_goal_ids[root_sub_goal_id]:
+                if self.operations[operation_id] == self.operations[self.goals[goal_id][1]]:
+                    return False, set()
+
+            # check if root goals contain the same operation
+            check_root_sub_goal_id = root_sub_goal_id
+            while check_root_sub_goal_id is not None:
+                goal_id = self.sub_goals[check_root_sub_goal_id][2]
+                if self.operations[operation_id] == self.operations[self.goals[goal_id][1]]:
+                    return False, set()
+                check_root_sub_goal_id = self.goals[goal_id][2]
+
+        goal_id = len(self.goals)
+        sub_goal_id_tree, sub_goal_ids = self._add_sub_goals(sub_goal_tree, goal_id)
+        self.goals.append((sub_goal_id_tree, operation_id, root_sub_goal_id))
+        self.status_of_goal[goal_id] = 0
+        self.premise_ids_of_goal[goal_id] = set()
+        if root_sub_goal_id is not None:
+            self.leaf_goal_ids[root_sub_goal_id].add(goal_id)
+
+        return True, sub_goal_ids
+
+    def _add_sub_goals(self, sub_goal_tree, goal_id):
+        if _is_negation(sub_goal_tree):  # negative form
+            sub_goal_id_tree, sub_goal_ids = self._add_sub_goals(sub_goal_tree[1], goal_id)
+            self._set_status_of_sub_goal(sub_goal_id_tree, -1)  # negative sub goals do not require solving
+            return ('~', sub_goal_id_tree), sub_goal_ids
+
+        elif _is_conjunction(sub_goal_tree) or _is_disjunction(sub_goal_tree):  # conjunction or disjunction
+            left_sub_goal_id_tree, left_sub_goal_ids = self._add_sub_goals(sub_goal_tree[0], goal_id)
+            right_sub_goal_id_tree, right_sub_goal_ids = self._add_sub_goals(sub_goal_tree[2], goal_id)
+            left_sub_goal_ids.update(right_sub_goal_ids)
+            return (left_sub_goal_id_tree, sub_goal_tree[1], right_sub_goal_id_tree), left_sub_goal_ids
+
+        else:  # atomic node: (predicate, instance)
+            sub_goal_id = len(self.sub_goals)
+            predicate, instance = sub_goal_tree
+            if predicate == 'Eq':
+                instance = self._adjust_expr(instance)
+                self.simplified_eq_sub_goal[sub_goal_id] = (instance, set(), set(), set())
+            self.sub_goals.append((predicate, instance, goal_id))
+            self.status_of_sub_goal[sub_goal_id] = 0
+            self.premise_ids_of_sub_goal[sub_goal_id] = set()
+            self.leaf_goal_ids[sub_goal_id] = set()
+            if (predicate, instance) not in self.sub_goal_ids:
+                self.sub_goal_ids[(predicate, instance)] = {sub_goal_id}
+            else:
+                self.sub_goal_ids[(predicate, instance)].add(sub_goal_id)
+            self.predicate_to_sub_goal_ids[predicate].add(sub_goal_id)
+            return sub_goal_id, {sub_goal_id}
+
+    def _check_sub_goals(self, sub_goal_ids):
+        if len(sub_goal_ids) == 0:
+            return
+
+        affected_goal_ids = set()
+
+        for sub_goal_id in sub_goal_ids:
+            # skip nodes that do not require checking
+            if self.status_of_goal[self.sub_goals[sub_goal_id][2]] != 0:
+                continue
+            if self.status_of_sub_goal[sub_goal_id] != 0:
+                continue
+
+            predicate, instance, goal_id = self.sub_goals[sub_goal_id]
+
+            if predicate == 'Eq':
+                instance = self.simplified_eq_sub_goal[sub_goal_id][0]
+                status, premise_ids = self._check_algebraic_premise(instance)
+
+                if status in {1, -1}:  # has solution, update status
+                    self._set_status_of_sub_goal(sub_goal_id, status)
+                    premise_ids.update(self.simplified_eq_sub_goal[sub_goal_id][1])
+                    self.premise_ids_of_sub_goal[sub_goal_id] = premise_ids
+                    affected_goal_ids.add(goal_id)
+                else:  # no solution, simplify expr
+                    premise_ids = self.simplified_eq_sub_goal[sub_goal_id][1]
+                    for sym in list(instance.free_symbols):
+                        if sym in self.sym_to_value:
+                            instance = instance.subs(self.sym_to_value)
+                            premise_ids.add(self.fact_id[('Eq', sym - self.sym_to_value[sym])])
+
+                    dependent_syms = set(instance.free_symbols)
+                    group_ids = set()
+                    for group_id in self.equations:
+                        if len(dependent_syms & self.equations[group_id][2]) > 0:
+                            dependent_syms.update(self.equations[group_id][2])
+                            group_ids.add(group_id)
+
+                    self.simplified_eq_sub_goal[sub_goal_id] = (instance, premise_ids, dependent_syms, group_ids)
+            else:
+                if (predicate, instance) in self.fact_id:
+                    self._set_status_of_sub_goal(sub_goal_id, 1)
+                    self.premise_ids_of_sub_goal[sub_goal_id] = {self.fact_id[(predicate, instance)]}
+                    affected_goal_ids.add(goal_id)
+                elif predicate in {'Point', 'Line', 'Circle'}:
+                    self._set_status_of_sub_goal(sub_goal_id, -1)
+                    affected_goal_ids.add(goal_id)
+
+        self._check_goals(affected_goal_ids)
+
+    def _set_status_of_sub_goal(self, sub_goal_id, status):
+        if self.status_of_sub_goal[sub_goal_id] != 0:
+            return
+
+        self.status_of_sub_goal[sub_goal_id] = status
+        for leaf_goal_id in self.leaf_goal_ids[sub_goal_id]:
+            if self.status_of_goal[leaf_goal_id] != 0:
+                self._set_status_of_goal(leaf_goal_id, -1)
+
+    def _check_goals(self, goal_ids):
+        if len(goal_ids) == 0:
+            return
+
+        affected_sub_goal_ids = set()
+        for goal_id in goal_ids:
+            if self.status_of_goal[goal_id] != 0:  # skip nodes that do not require checking
+                continue
+
+            sub_goal_id_tree, operation_id, root_sub_goal_id = self.goals[goal_id]
+            status, premise_ids = self._check_goal(sub_goal_id_tree)
+
+            if status == 1:
+                self._set_status_of_goal(goal_id, 1)
+                if root_sub_goal_id is not None:  # apply theorem
+                    _, theorem_name, theorem_instance = self.operations[operation_id]
+                    theorem_gpl = self.parsed_gdl['Theorems'][theorem_name]
+                    replace = dict(zip(theorem_gpl['paras'], theorem_instance))
+                    conclusion = self._generate_conclusion(theorem_gpl['conclusion'], replace)
+                    operation_id = self._add_operation(('apply', theorem_name, theorem_instance))
+                    added, sub_goal_ids = self._add_fact(conclusion[0], conclusion[1], premise_ids, operation_id)
+                    affected_sub_goal_ids.update(sub_goal_ids)
+                self.premise_ids_of_goal[goal_id] = premise_ids
+
+            elif status == -1:
+                self._set_status_of_goal(goal_id, -1)
+                self.premise_ids_of_goal[goal_id] = premise_ids
+
+        self._check_sub_goals(affected_sub_goal_ids)
+
+    def _check_goal(self, sub_goal_id_tree):
+        if _is_negation(sub_goal_id_tree):  # negative form
+            return 1, set()  # every negative form has passed algebraic form checking and must be true
+
+        elif _is_conjunction(sub_goal_id_tree):
+            left_status, left_premise_ids = self._check_goal(sub_goal_id_tree[0])
+            if left_status == -1:
+                return -1, left_premise_ids
+
+            right_status, right_premise_ids = self._check_goal(sub_goal_id_tree[2])
+            if right_status == -1:
+                return -1, right_premise_ids
+
+            left_premise_ids.update(right_premise_ids)
+            if left_status == 1 and right_status == 1:
+                return 1, left_premise_ids
+
+            return 0, set()
+
+        elif _is_disjunction(sub_goal_id_tree):
+            left_status, left_premise_ids = self._check_goal(sub_goal_id_tree[0])
+            if left_status == 1:
+                return 1, left_premise_ids
+
+            right_status, right_premise_ids = self._check_goal(sub_goal_id_tree[2])
+            if right_status == 1:
+                return 1, right_premise_ids
+
+            if left_status == -1 and right_status == -1:
+                left_premise_ids.update(right_premise_ids)
+                return 1, left_premise_ids
+
+            return 0, set()
+        else:
+            if self.status_of_sub_goal[sub_goal_id_tree] in {1, -1}:
+                return self.status_of_sub_goal[sub_goal_id_tree], self.premise_ids_of_sub_goal[sub_goal_id_tree].copy()
+            return 0, set()
+
+    def _set_status_of_goal(self, goal_id, status):
+        if self.status_of_goal[goal_id] != 0:
+            return
+
+        self.status_of_goal[goal_id] = status  # set status of goal
+
+        sub_goals = [self.goals[goal_id][0]]  # set status of sub goal
+        while len(sub_goals) > 0:
+            sub_goal_id_tree = sub_goals.pop()
+            if isinstance(sub_goal_id_tree, int):
+                self._set_status_of_sub_goal(sub_goal_id_tree, -1)
+            elif _is_conjunction(sub_goal_id_tree) or _is_disjunction(sub_goal_id_tree):
+                sub_goals.append(sub_goal_id_tree[0])
+                sub_goals.append(sub_goal_id_tree[2])
+
+    """↑---------Backward Solving---------↑"""
+
+    """↓-------------Outputs--------------↓"""
+
+    def show_gc(self):
+        operation_ids = set()
+        goal_related_operation_ids = set()
+        if len(self.goals) > 0 and self.status_of_goal[0] == 1:
+            goal_related_premise_ids = list(self.premise_ids_of_goal[0])
+        else:
+            goal_related_premise_ids = []
+        for fact_id in goal_related_premise_ids:
+            goal_related_operation_ids.add(self.facts[fact_id][4])
+            for new_fact_id in self.facts[fact_id][2]:
+                if new_fact_id not in goal_related_premise_ids:
+                    goal_related_premise_ids.append(new_fact_id)
+        goal_related_premise_ids = set(goal_related_premise_ids)
+
+        construction_pf = '{0:<3}{1:<40}'
+        construction_pfu = '\033[32m' + construction_pf + '\033[0m'
+        print('\033[33m\nConstructions:\033[0m')
+        for operation_id in self.constructions:
+            construction = self.operations[operation_id][1] + ':' + self.operations[operation_id][2]
+            if operation_id in goal_related_operation_ids:
+                print(construction_pfu.format(operation_id, construction))
+            else:
+                print(construction_pf.format(operation_id, construction))
+
+            used_branch, parsed_construction = self.constructions[operation_id]
+            for branch in range(len(parsed_construction)):
+                t_entities, d_entities, added_facts, equations, inequalities, values = parsed_construction[branch]
+                t_entities = [_anti_parse_fact(fact) for fact in t_entities]
+                d_entities = [_anti_parse_fact(fact) for fact in d_entities]
+                added_facts = [_anti_parse_fact(fact) for fact in added_facts]
+                equations = [_anti_parse_fact(('Eq', fact)) for fact in equations]
+                inequalities = [_anti_parse_fact(fact) for fact in inequalities]
+                if branch + 1 == used_branch:
+                    s = '   branch: {} (solved), '.format(branch + 1)
+                else:
+                    s = '   branch: {}, '.format(branch + 1)
+                s += 'target_entities: {}, dependent_entities: {}, added_facts: {}\n'.format(
+                    str(t_entities), str(d_entities), str(added_facts))
+                s += '   equations: [{}], inequalities: [{}]\n'.format(', '.join([str(item) for item in equations]),
+                                                                       ', '.join([str(item) for item in inequalities]))
+                if values is not None:
+                    t_syms, solved_values = values
+                    values = [f"({', '.join([str(sym) for sym in t_syms])})"]
+                    for solved_value in solved_values:
+                        values.append(f"({', '.join([str(round(float(value), 4)) for value in solved_value])})")
+                    values = f"[{', '.join(values)}]"
+                else:
+                    values = 'None'
+                s += '   solved_values: {}\n'.format(values)
+                print(s)
+
+        entity_pf = '{0:<12}{1:<15}{2:<31}{3:<25}{4:<25}{5:<15}{6:<100}'
+        entity_pfu = '\033[32m' + entity_pf + '\033[0m'
+        for entity in ['Point', 'Line', 'Circle']:
+            if len(self.predicate_to_fact_ids[entity]) == 0:
+                continue
+            print(f'\033[36mEntity - {entity}:\033[0m')
+            print('\033[36m' + entity_pf.format(
+                'fact_id', 'instance', 'values', 'premise_ids', 'entity_ids', 'operation_id', 'operation') + '\033[0m')
+            for fact_id in sorted(list(self.predicate_to_fact_ids[entity])):
+                predicate, instance, premise_ids, entity_ids, operation_id = self.facts[fact_id]
+                operation_ids.add(operation_id)
+                operation = _anti_parse_operation(self.operations[operation_id])
+                if entity == 'Point':
+                    values = str((round(float(self.entity_sym_to_value[symbols(f'{instance[0]}.x')]), 4),
+                                  round(float(self.entity_sym_to_value[symbols(f'{instance[0]}.y')]), 4)))
+                elif entity == 'Line':
+                    values = str((round(float(self.entity_sym_to_value[symbols(f'{instance[0]}.k')]), 4),
+                                  round(float(self.entity_sym_to_value[symbols(f'{instance[0]}.b')]), 4)))
+                else:
+                    values = str((round(float(self.entity_sym_to_value[symbols(f'{instance[0]}.u')]), 4),
+                                  round(float(self.entity_sym_to_value[symbols(f'{instance[0]}.v')]), 4),
+                                  round(float(self.entity_sym_to_value[symbols(f'{instance[0]}.r')]), 4)))
+                instance = f'({instance[0]})'
+                premise_ids = _format_ids(premise_ids)
+                entity_ids = _format_ids(entity_ids)
+
+                if fact_id in goal_related_premise_ids:
+                    print(entity_pfu.format(fact_id, instance, values, premise_ids, entity_ids,
+                                            operation_id, operation))
+                else:
+                    print(entity_pf.format(fact_id, instance, values, premise_ids, entity_ids,
+                                           operation_id, operation))
+            print()
+
+        relation_pf = '{0:<12}{1:<40}{2:<28}{3:<28}{4:<15}{5:<100}'
+        relation_pfu = '\033[32m' + relation_pf + '\033[0m'
+        for predicate in self.predicate_to_fact_ids:
+            if predicate in ['Point', 'Line', 'Circle', 'Eq']:
+                continue
+            if len(self.predicate_to_fact_ids[predicate]) == 0:
+                continue
+
+            print(f"\033[36mRelation - {predicate}:\033[0m")
+            print('\033[36m' + relation_pf.format('fact_id', 'instance', 'premise_ids', 'entity_ids',
+                                                  'operation_id', 'operation') + '\033[0m')
+            for fact_id in sorted(list(self.predicate_to_fact_ids[predicate])):
+                predicate, instance, premise_ids, entity_ids, operation_id = self.facts[fact_id]
+                operation_ids.add(operation_id)
+                operation = _anti_parse_operation(self.operations[operation_id])
+                instance = '(' + ','.join(instance) + ')'
+                premise_ids = _format_ids(premise_ids)
+                entity_ids = _format_ids(entity_ids)
+                if fact_id in goal_related_premise_ids:
+                    print(relation_pfu.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
+                else:
+                    print(relation_pf.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
+            print()
+
+        if len(self.predicate_to_fact_ids['Eq']) > 0:
+            print('\033[36mRelation - Equations:\033[0m')
+            print('\033[36m' + relation_pf.format(
+                'fact_id', 'instance', 'premise_ids', 'entity_ids', 'operation_id', 'operation') + '\033[0m')
+            for fact_id in sorted(list(self.predicate_to_fact_ids['Eq'])):
+                predicate, instance, premise_ids, entity_ids, operation_id = self.facts[fact_id]
+                operation_ids.add(operation_id)
+                operation = _anti_parse_operation(self.operations[operation_id])
+                instance = str(instance).replace(' ', '')
+                premise_ids = _format_ids(premise_ids)
+                entity_ids = _format_ids(entity_ids)
+                if fact_id in goal_related_premise_ids:
+                    print(relation_pfu.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
+                else:
+                    print(relation_pf.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
+        print()
+
+        if len(self.goals) > 0:
+            goal_pf = '{0:<12}{1:<40}{2:<18}{3:<12}{4:<26}{5:<15}{6:<100}'
+            goal_pfs = '\033[32m' + goal_pf + '\033[0m'
+            goal_pfu = '\033[31m' + goal_pf + '\033[0m'
+            print("\033[34mGoals:\033[0m")
+            print('\033[34m' + goal_pf.format('goal_id', 'sub_goal_id_tree', 'root_sub_goal_id', 'status',
+                                              'premise_ids', 'operation_id', 'operation') + '\033[0m')
+            for goal_id in range(len(self.goals)):
+                sub_goal_id_tree, operation_id, root_sub_goal_id = self.goals[goal_id]
+                sub_goal_id_tree = str(sub_goal_id_tree).replace(' ', '').replace("'", '')
+                operation_ids.add(operation_id)
+                operation = _anti_parse_operation(self.operations[operation_id])
+                root_sub_goal_id = str(root_sub_goal_id)
+                status = self.status_of_goal[goal_id]
+                premise_ids = _format_ids(self.premise_ids_of_goal[goal_id])
+
+                if status == 1:
+                    print(goal_pfs.format(goal_id, sub_goal_id_tree, root_sub_goal_id, status, premise_ids,
+                                          operation_id, operation))
+                elif status == -1:
+                    print(goal_pfu.format(goal_id, sub_goal_id_tree, root_sub_goal_id, status, premise_ids,
+                                          operation_id, operation))
+                else:
+                    print(goal_pf.format(goal_id, sub_goal_id_tree, root_sub_goal_id, status, premise_ids,
+                                         operation_id, operation))
+            print()
+
+            sub_goal_pf = '{0:<12}{1:<25}{2:<40}{3:<10}{4:<30}{5:<15}{6:<50}'
+            sub_goal_pfs = '\033[32m' + sub_goal_pf + '\033[0m'
+            sub_goal_pfu = '\033[31m' + sub_goal_pf + '\033[0m'
+            print("\033[34mSub Goals:\033[0m")
+            print('\033[34m' + sub_goal_pf.format('sub_goal_id', 'predicate', 'instance', 'goal_id',
+                                                  'leaf_goal_ids', 'status', 'premise_ids') + '\033[0m')
+            last_goal_id = self.sub_goals[0][2]
+            for sub_goal_id in range(len(self.sub_goals)):
+                predicate, instance, goal_id = self.sub_goals[sub_goal_id]
+                if goal_id != last_goal_id:
+                    print()
+                    last_goal_id = goal_id
+                if predicate == 'Eq':
+                    instance = str(instance).replace(' ', '')
+                else:
+                    instance = '(' + ','.join(instance) + ')'
+                leaf_goal_ids = _format_ids(self.leaf_goal_ids[sub_goal_id])
+                status = self.status_of_sub_goal[sub_goal_id]
+                premise_ids = _format_ids(self.premise_ids_of_sub_goal[sub_goal_id])
+
+                if status == 1:
+                    print(sub_goal_pfs.format(sub_goal_id, predicate, instance, goal_id,
+                                              leaf_goal_ids, status, premise_ids))
+                elif status == -1:
+                    print(sub_goal_pfu.format(sub_goal_id, predicate, instance, goal_id,
+                                              leaf_goal_ids, status, premise_ids))
+                else:
+                    print(sub_goal_pf.format(sub_goal_id, predicate, instance, goal_id,
+                                             leaf_goal_ids, status, premise_ids))
+            print()
+
+        if len(self.predicate_to_fact_ids['Eq']) > 0:
+            sym_pf = '{0:<40}{1:<15}{2:<25}{3:<10}{4:<20}'
+            sym_pfu = '\033[32m' + sym_pf + '\033[0m'
+            print('\033[35mAlgebraic System - Symbols:\033[0m')
+            print('\033[35m' + sym_pf.format(
+                'attribution', 'sym', 'multiple_forms', 'fact_id', 'value') + '\033[0m')
+            for sym in self.sym_to_syms:
+                if '.' in str(sym):
+                    entities, attr = str(sym).split('.')
+                    predicate = self.parsed_gdl['Attributions'][attr]['name']
+                    instance = ",".join(list(entities))
+                    attr = f'{predicate}({instance})'
+                    multiple_forms = '(' + ', '.join([str(item) for item in self.sym_to_syms[sym]]) + ')'
+                else:
+                    attr = f'Free({str(sym)})'
+                    multiple_forms = '(' + str(sym) + ')'
+
+                if sym in self.sym_to_value:
+                    fact_id = self.fact_id[('Eq', sym - self.sym_to_value[sym])]
+                    value = str(self.sym_to_value[sym])
+                else:
+                    fact_id = 'None'
+                    value = "None"
+
+                if fact_id != 'None' and fact_id in goal_related_premise_ids:
+                    print(sym_pfu.format(attr, str(sym), multiple_forms, fact_id, value))
+                else:
+                    print(sym_pf.format(attr, str(sym), multiple_forms, fact_id, value))
+            print()
+
+            eq_groups_pf = '{0:<10}{1:<40}{2:<20}{3:<30}'
+            print('\033[35mAlgebraic System - Equation groups:\033[0m')
+            print('\033[35m' + eq_groups_pf.format(
+                'group_id', 'simplified_eq', 'premise_ids', 'free_symbols') + '\033[0m')
+            for group_id in self.equations:
+                for i in range(len(self.equations[group_id][0])):
+                    simplified_eq = str(self.equations[group_id][0][i]).replace(' ', '')
+                    premise_ids = _format_ids(self.equations[group_id][1][i])
+                    free_symbols = ', '.join([str(item) for item in self.equations[group_id][0][i].free_symbols])
+                    free_symbols = '(' + free_symbols + ')'
+                    print(eq_groups_pf.format(group_id, simplified_eq, premise_ids, free_symbols))
+                print()
+
+        if len(self.simplified_eq_sub_goal) > 0:
+            algebraic_goal_pf = '{0:<10}{1:<40}{2:<20}{3:<30}{4:<15}'
+            print('\033[35mAlgebraic System - Algebraic Goals:\033[0m')
+            print('\033[35m' + algebraic_goal_pf.format(
+                'goal_id', 'simplified_eq', 'premise_ids', 'dependent_syms', 'group_ids') + '\033[0m')
+            for goal_id in self.simplified_eq_sub_goal:
+                simplified_eq, premise_ids, dependent_syms, group_ids = self.simplified_eq_sub_goal[goal_id]
+                simplified_eq = str(simplified_eq).replace(' ', '')
+                premise_ids = _format_ids(premise_ids)
+                dependent_syms = ','.join([str(item) for item in sorted(list(dependent_syms), key=str)])
+                dependent_syms = '{' + dependent_syms + '}'
+                group_ids = _format_ids(group_ids)
+                print(algebraic_goal_pf.format(goal_id, simplified_eq, premise_ids, dependent_syms, group_ids))
+            print()
+
+        if len(self.relation_instances) > 0:
+            relation_instance_pf = '{0:<45}{1:<100}'
+            print('\033[33mRelation instances:\033[0m')
+            print('\033[33m' + relation_instance_pf.format('relation_name', 'relation_instances') + '\033[0m')
+            for relation_name in self.relation_instances:
+                relation_instances = [f"({','.join(item)})" for item in self.relation_instances[relation_name]]
+                relation_instances = f"[{', '.join(relation_instances)}]"
+                print(relation_instance_pf.format(relation_name, relation_instances))
+            print()
+
+        if len(self.theorem_instances) > 0:
+            theorem_instance_pf = '{0:<45}{1:<100}'
+            print('\033[33mTheorem instances:\033[0m')
+            print('\033[33m' + theorem_instance_pf.format('theorem_name', 'theorem_instances') + '\033[0m')
+            for theorem_name in self.theorem_instances:
+                theorem_instances = [f"({','.join(item)})" for item in self.theorem_instances[theorem_name]]
+                theorem_instances = f"[{', '.join(theorem_instances)}]"
+                print(theorem_instance_pf.format(theorem_name, theorem_instances))
+            print()
+
+        operation_pf = '{0:<15}{1:<50}'
+        operation_pfu = '\033[32m' + operation_pf + '\033[0m'
+        print('\033[33mOperations:\033[0m')
+        print('\033[33m' + operation_pf.format('operation_id', 'operation') + '\033[0m')
+        for operation_id in range(len(self.operations)):
+            if operation_id not in operation_ids:
+                continue
+            operation = _anti_parse_operation(self.operations[operation_id])
+            if operation_id in goal_related_operation_ids:
+                print(operation_pfu.format(operation_id, operation))
+            else:
+                print(operation_pf.format(operation_id, operation))
+        print()
+
+    def get_gc(self):
+        serialized_graph = ['<init_fact>']
+
+        # forward
+        edges = set()
+        for fact_id in range(len(self.facts)):
+            predicate, instance, premise_ids, entity_ids, operation_id = self.facts[fact_id]
+            if len(premise_ids) == 0:
+                if serialized_graph[-1] != '<init_fact>':
+                    serialized_graph.append('&')
+                serialized_graph.extend(_serialize_fact(predicate, instance))
+            else:
+                edge = (tuple(sorted(list(premise_ids))), operation_id,
+                        tuple(sorted(list(self.fact_groups[operation_id]))))
+                if edge in edges:
+                    continue
+
+                serialized_graph.append('<p>')
+                for premise_id in edge[0]:
+                    predicate, instance, _, _, _ = self.facts[premise_id]
+                    if serialized_graph[-1] != '<p>':
+                        serialized_graph.append('&')
+                    serialized_graph.extend(_serialize_fact(predicate, instance))
+
+                serialized_graph.append('<o>')
+                serialized_graph.extend(_serialize_operation(self.operations[operation_id]))
+
+                serialized_graph.append('<c>')
+                for conclusion_id in edge[2]:
+                    predicate, instance, _, _, _ = self.facts[conclusion_id]
+                    if serialized_graph[-1] != '<c>':
+                        serialized_graph.append('|')
+                    serialized_graph.extend(_serialize_fact(predicate, instance))
+
+                edges.add(edge)
+
+        if len(self.goals) == 0:
+            return serialized_graph
+
+        # backward
+        serialized_graph.append('<init_goal>')
+        serialized_graph.extend(_serialize_goal(self, self.goals[0][0]))
+
+        for goal_id in range(1, len(self.goals)):
+            sub_goal_id_tree, operation_id, root_sub_goal_id = self.goals[goal_id]
+            serialized_graph.append('<g>')
+            predicate, instance, _ = self.sub_goals[root_sub_goal_id]
+            serialized_graph.extend(_serialize_fact(predicate, instance))
+            serialized_graph.append('<s>')
+            serialized_graph.extend(_serialize_goal(self, sub_goal_id_tree))
+
+        return serialized_graph
+
+    def draw_gc(self, save_path='./', filename='gc', file_format='pdf'):
+        _, ax = plt.subplots()
+        ax.axis('equal')  # maintain the circle's aspect ratio
+        ax.axis('off')  # hide the axes
+        middle_x = (self.sample_range['x_max'] + self.sample_range['x_min']) / 2
+        range_x = (self.sample_range['x_max'] - self.sample_range['x_min']) / 2 * self.sample_rate
+        middle_y = (self.sample_range['y_max'] + self.sample_range['y_min']) / 2
+        range_y = (self.sample_range['y_max'] - self.sample_range['y_min']) / 2 * self.sample_rate
+        x_min = float(middle_x - range_x)
+        x_max = float(middle_x + range_x)
+        y_min = float(middle_y - range_y)
+        y_max = float(middle_y + range_y)
+        x_adjust = (range_x * 0.02)
+        y_adjust = (range_y * 0.02)
+        text_size = int(max(range_x, range_y) * 10)
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(y_min, y_max)
+
+        for fact_id in self.predicate_to_fact_ids['Line']:
+            line = self.facts[fact_id][1][0]
+            k = float(self.entity_sym_to_value[symbols(f'{line}.k')])
+            b = float(self.entity_sym_to_value[symbols(f'{line}.b')])
+            ax.axline((0, b), slope=k, color='blue')
+
+        for fact_id in self.predicate_to_fact_ids['Circle']:
+            circle = self.facts[fact_id][1][0]
+            u = float(self.entity_sym_to_value[symbols(f'{circle}.u')])
+            v = float(self.entity_sym_to_value[symbols(f'{circle}.v')])
+            r = float(self.entity_sym_to_value[symbols(f'{circle}.r')])
+            ax.add_artist(plt.Circle((u, v), r, color="green", fill=False))
+
+        for fact_id in self.predicate_to_fact_ids['Point']:
+            point = self.facts[fact_id][1][0]
+            x = float(self.entity_sym_to_value[symbols(f'{point}.x')])
+            y = float(self.entity_sym_to_value[symbols(f'{point}.y')])
+            ax.plot(x, y, "o", color='red')
+            ax.text(x, y + y_adjust, point, ha='center', va='bottom', color='black', size=text_size)
+
+        for fact_id in self.predicate_to_fact_ids['Line']:
+            line = self.facts[fact_id][1][0]
+            k = float(self.entity_sym_to_value[symbols(f'{line}.k')])
+            b = float(self.entity_sym_to_value[symbols(f'{line}.b')])
+            if k < -1:
+                y = y_max - range_y * 0.1
+                x = (y - b) / k + x_adjust
+            elif k < 0:
+                x = x_min + range_x * 0.1
+                y = k * x + b + y_adjust
+            elif k < 1:
+                x = x_max - range_x * 0.1
+                y = k * x + b + y_adjust
+            else:  # k > 1
+                y = y_max - range_y * 0.1
+                x = (y - b) / k - x_adjust
+            ax.text(x, y, line, ha='center', va='bottom', color='black', size=text_size)
+
+        for fact_id in self.predicate_to_fact_ids['Circle']:
+            circle = self.facts[fact_id][1][0]
+            u = float(self.entity_sym_to_value[symbols(f'{circle}.u')])
+            v = float(self.entity_sym_to_value[symbols(f'{circle}.v')])
+            r = float(self.entity_sym_to_value[symbols(f'{circle}.r')])
+            k = range_y / range_x
+            k1 = k
+            k2 = -k
+            b1 = y_max - k1 * x_max
+            b2 = y_max - k2 * x_min
+            if v > k1 * u + b1 and v > k2 * u + b2:
+                v = v - r - y_adjust * 5
+            elif k1 * u + b1 < v < k2 * u + b2:
+                u = u + r + x_adjust
+            elif k1 * u + b1 > v > k2 * u + b2:
+                u = u - r - x_adjust * 2
+            else:
+                v = v + r + y_adjust
+            ax.text(u, v, circle, ha='center', va='bottom', color='black', size=text_size)
+
+        plt.savefig(save_path + filename + '.' + file_format)
+
+    def draw_sg(self, save_path='./', filename='sg', file_format='pdf'):
+        forward_graph = Graph()
+        if len(self.status_of_goal) > 0 and self.status_of_goal[0] == 1:
+            goal_related_premise_ids = list(self.premise_ids_of_goal[0])
+        else:
+            goal_related_premise_ids = []
+        for fact_id in goal_related_premise_ids:
+            for new_fact_id in self.facts[fact_id][2]:
+                if new_fact_id not in goal_related_premise_ids:
+                    goal_related_premise_ids.append(new_fact_id)
+        goal_related_premise_ids = set(goal_related_premise_ids)
+        edges = set()
+        for fact_id in range(len(self.facts)):
+            predicate, instance, premise_ids, entity_ids, operation_id = self.facts[fact_id]
+            name = f'fact_{fact_id}'
+            label = _anti_parse_fact((predicate, instance))
+            if fact_id in goal_related_premise_ids:
+                fillcolor = 'lightgreen'
+            else:
+                fillcolor = 'lightgrey'
+            forward_graph.node(name=name, label=label,
+                               shape='rectangle', style='filled', color='black', fillcolor=fillcolor)
+            if len(premise_ids) > 0:
+                edge_name = f'operation_{operation_id}'
+                edge_label = _anti_parse_operation(self.operations[operation_id])
+                if edge_label.startswith('Construct'):
+                    fillcolor = 'lightyellow'
+                else:
+                    fillcolor = 'lightblue'
+                forward_graph.node(name=edge_name, label=edge_label,
+                                   style='filled', color='black', fillcolor=fillcolor)
+                for premise_id in premise_ids:
+                    edges.add((f'fact_{premise_id}', edge_name))
+                edges.add((edge_name, name))
+        for tail, head in edges:
+            forward_graph.edge(tail, head, dir='forward')
+
+        forward_graph.render(save_path + f'{filename}_forward', view=False, cleanup=True, format=file_format)
+
+        backward_graph = Graph()
+        backward_graph.attr(compound='true')
+        for goal_id in range(len(self.goals)):
+            goal = Graph(f'cluster_goal_{goal_id}')
+            goal.attr(style='solid', color='black')
+
+            sub_goal_id_tree, operation_id, root_sub_goal_id = self.goals[goal_id]
+            sub_goals = [(sub_goal_id_tree, None)]  # [(sub_goal_id_tree, root_name)]
+            operator_id_count = 0
+            first_sub_goal_name = None
+            while len(sub_goals) > 0:
+                sub_goal_id_tree, root_name = sub_goals.pop()
+
+                if _is_negation(sub_goal_id_tree):
+                    name = f'operator_{goal_id}_{operator_id_count}'
+                    operator_id_count += 1
+                    goal.node(name=name, label='~', shape='circle', style='filled', color='black')
+                    sub_goals.append((sub_goal_id_tree[1], name))
+
+                elif _is_conjunction(sub_goal_id_tree) or _is_disjunction(sub_goal_id_tree):
+                    name = f'operator_{goal_id}_{operator_id_count}'
+                    operator_id_count += 1
+                    goal.node(name=name, label=sub_goal_id_tree[1], shape='circle', color='black')
+                    sub_goals.append((sub_goal_id_tree[0], name))
+                    sub_goals.append((sub_goal_id_tree[2], name))
+
+                else:
+                    name = f'sub_goal_{goal_id}_{sub_goal_id_tree}'
+                    predicate, instance, _ = self.sub_goals[sub_goal_id_tree]
+                    if self.status_of_sub_goal[sub_goal_id_tree] == 0:
+                        fillcolor = 'lightgrey'
+                    elif self.status_of_sub_goal[sub_goal_id_tree] == -1:
+                        fillcolor = 'lightcoral'
+                    else:
+                        fillcolor = 'lightgreen'
+                    goal.node(name=name, label=_anti_parse_fact((predicate, instance)),
+                              shape='rectangle', style='filled', color='black', fillcolor=fillcolor)
+
+                if first_sub_goal_name is None:
+                    first_sub_goal_name = name
+
+                if root_name is not None:
+                    goal.edge(root_name, name)
+
+            backward_graph.subgraph(goal)
+            if root_sub_goal_id is not None:
+                _, _, root_goal_id = self.sub_goals[root_sub_goal_id]
+                edge_name = f'edge_{root_sub_goal_id}_{goal_id}'
+                backward_graph.node(name=edge_name, label=_anti_parse_operation(self.operations[operation_id]),
+                                    style='filled', color='black', fillcolor='lightblue')
+
+                root_name = f'sub_goal_{root_goal_id}_{root_sub_goal_id}'
+                backward_graph.edge(root_name, edge_name, dir='forward')
+                backward_graph.edge(edge_name, first_sub_goal_name, dir='forward')
+
+        backward_graph.render(save_path + f'{filename}_backward', view=False, cleanup=True, format=file_format)
+
+    """↑-------------Outputs--------------↑"""
