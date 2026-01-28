@@ -9,7 +9,7 @@ src/em.egg-info
 data
 
 # Qin Cheng project files
-/src/em/gcgen
-/src/em/gdl
+/src/em/gcg_dev
 
 .vscode
+.livesync
