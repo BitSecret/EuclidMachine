@@ -18,7 +18,8 @@ classifiers = [
 dependencies = [
     "sympy==1.14.0",
     "matplotlib==3.10.6",
-    "func-timeout==4.3.5"
+    "func-timeout==4.3.5",
+    "python-graphviz>=0.21",
 ]
 [project.urls]
 "Homepage" = "https://github.com/BitSecret/EuclidMachine"

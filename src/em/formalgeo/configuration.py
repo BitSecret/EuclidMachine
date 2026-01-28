@@ -1,6 +1,6 @@
 from em.formalgeo.tools import entity_letters
 from em.formalgeo.tools import _parse_expr_to_algebraic_forms, _get_geometric_constraints
-from em.formalgeo.tools import _satisfy_algebraic, precision
+from em.formalgeo.tools import satisfy_algebraic_map, precision
 from em.formalgeo.tools import _parse_construction, _parse_theorem, _parse_goal
 from em.formalgeo.tools import _serialize_fact, _serialize_operation, _serialize_goal
 from em.formalgeo.tools import _is_negation, _is_conjunction, _is_disjunction
@@ -10,20 +10,14 @@ from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet
 from func_timeout import func_timeout, FunctionTimedOut
 from graphviz import Graph
 import matplotlib.pyplot as plt
-import matplotlib
 import random
 import copy
-
-# from formalgeo.tools import draw_gpl
-
-matplotlib.use('TkAgg')  # resolve backend compatibility issues
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # use Microsoft YaHei font
-plt.rcParams['axes.unicode_minus'] = False  # fix negative sign display issues
+import math
 
 
 class GeometricConfiguration:
     def __init__(self, parsed_gdl, random_seed=0, sample_max_number=1, sample_max_epoch=1000, sample_rate=1.2,
-                 timeout=2):
+                 timeout=5):
         """The <GeometricConfiguration> class stores the construction and reasoning process of a configuration.
 
         Args:
@@ -131,7 +125,11 @@ class GeometricConfiguration:
         self.facts = []  # fact_id -> (predicate, instance, {premise_id}, {entity_id}, operation_id)
         self.fact_id = {}  # (predicate, instance) -> fact_id
         self.predicate_to_fact_ids = {}  # predicate -> {fact_id}
-        for relation in list(self.parsed_gdl['Entities']) + list(self.parsed_gdl['Relations']) + ['Eq']:
+        for relation in self.parsed_gdl['Entities'].keys():
+            self.predicate_to_fact_ids[relation] = set()
+        for relation in self.parsed_gdl['Relations'].keys():
+            self.predicate_to_fact_ids[relation] = set()
+        for relation in satisfy_algebraic_map.keys():
             self.predicate_to_fact_ids[relation] = set()
         self.fact_groups = {}  # operation_id -> {fact_id}
 
@@ -146,15 +144,21 @@ class GeometricConfiguration:
         self.leaf_goal_ids = {}  # sub_goal_id -> {leaf_goal_id}
         self.sub_goal_ids = {}  # (predicate, instance) -> {sub_goal_id}
         self.predicate_to_sub_goal_ids = {}  # predicate -> {sub_goal_id}
-        for relation in list(self.parsed_gdl['Entities']) + list(self.parsed_gdl['Relations']) + ['Eq']:
+        for relation in self.parsed_gdl['Entities'].keys():
+            self.predicate_to_sub_goal_ids[relation] = set()
+        for relation in self.parsed_gdl['Relations'].keys():
+            self.predicate_to_sub_goal_ids[relation] = set()
+        for relation in satisfy_algebraic_map.keys():
             self.predicate_to_sub_goal_ids[relation] = set()
 
         # operations
         self.operations = []  # operation_id -> (operation_type, operation_predicate, operation_instance)
 
         # instances
-        self.relation_instances = {'Point': set(), 'Line': set(), 'Circle': set()}  # relation_name -> {instance}
-        self.theorem_instances = {}  # theorem_name -> {instance: (premises, conclusion)}
+        self.relation_instances = {}  # relation_name -> {relation_instance}
+        for relation in ('Point', 'Line', 'Circle'):
+            self.relation_instances[relation] = set()
+        self.theorem_instances = {}  # theorem_name -> {theorem_instance: (premises, conclusion)}
 
         # algebraic system
         self.entity_sym_to_value = {}  # entity_related_sym -> value
@@ -282,7 +286,7 @@ class GeometricConfiguration:
         for expr in equations:
             expr = expr.subs(self.entity_sym_to_value)
             if len(expr.free_symbols) == 0:
-                if not _satisfy_algebraic['Eq'](expr):
+                if not satisfy_algebraic_map['Eq'](expr):
                     return solved_values
                 continue
             replaced_equations.append(expr)
@@ -290,7 +294,7 @@ class GeometricConfiguration:
         for algebraic_relation, expr in inequalities:
             expr = expr.subs(self.entity_sym_to_value)
             if len(expr.free_symbols) == 0:
-                if not _satisfy_algebraic[algebraic_relation](expr):
+                if not satisfy_algebraic_map[algebraic_relation](expr):
                     return solved_values
                 continue
             replaced_inequalities.append((algebraic_relation, expr))
@@ -326,7 +330,7 @@ class GeometricConfiguration:
                     sym_to_value = dict(zip(t_syms, equation_solution))
                     satisfied = True
                     for algebraic_relation, expr in replaced_inequalities:
-                        if not _satisfy_algebraic[algebraic_relation](expr, sym_to_value):
+                        if not satisfy_algebraic_map[algebraic_relation](expr, sym_to_value):
                             satisfied = False
                             break
                     if satisfied:
@@ -343,7 +347,7 @@ class GeometricConfiguration:
 
             satisfied = True
             for algebraic_relation, expr in replaced_inequalities:
-                if not _satisfy_algebraic[algebraic_relation](expr, sym_to_value):
+                if not satisfy_algebraic_map[algebraic_relation](expr, sym_to_value):
                     satisfied = False
                     break
             if satisfied:
@@ -420,13 +424,6 @@ class GeometricConfiguration:
                 generated_paras, generated_instances = self._generate_instances(
                     (theorem_gdl['premises'], '&', theorem_gdl['conclusion'])
                 )
-            # if theorem_name == 'equal_angle_property_algebraic':
-            #     print(generated_paras)
-            #     print(generated_instances)
-            #     print("('c', 'y', 'y', 'a') in generated_instances:", ('c', 'y', 'y', 'a') in generated_instances)
-            #     print("('b', 'x', 'x', 'c') in generated_instances:", ('b', 'x', 'x', 'c') in generated_instances)
-            #     print("('a', 'z', 'z', 'b') in generated_instances:", ('a', 'z', 'z', 'b') in generated_instances)
-            #     print()
 
             if generated_paras != theorem_gdl['paras']:  # ensure consistent paras order
                 adjust_ids = tuple([generated_paras.index(p) for p in theorem_gdl['paras']])
@@ -441,8 +438,6 @@ class GeometricConfiguration:
                 premises = self._generate_premises(theorem_gdl['premises'], replace)
                 conclusion = self._generate_conclusion(theorem_gdl['conclusion'], replace)
                 self.theorem_instances[theorem_name][generated_instance] = (premises, conclusion)
-                # if theorem_name == 'equal_angle_property_algebraic':
-                #     print(generated_instance, premises, conclusion)
 
         return list(self.theorem_instances[theorem_name].keys())
 
@@ -457,19 +452,6 @@ class GeometricConfiguration:
         elif _is_conjunction(gpl_tree):  # conjunction
             left_paras_and_instances = self._generate_instances(gpl_tree[0], paras_and_instances)
             right_paras_and_instances = self._generate_instances(gpl_tree[2], left_paras_and_instances)
-            # if str(gpl_tree[0]) == "('Eq', lm.ma - xy.ma)":
-            #     print(left_paras_and_instances[0])
-            #     print(left_paras_and_instances[1])
-            #     print("('c', 'y', 'y', 'a') in left_paras_and_instances[1]:", ('c', 'y', 'y', 'a') in left_paras_and_instances[1])
-            #     print("('b', 'x', 'x', 'c') in left_paras_and_instances[1]:", ('b', 'x', 'x', 'c') in left_paras_and_instances[1])
-            #     print("('a', 'z', 'z', 'b') in left_paras_and_instances[1]:", ('a', 'z', 'z', 'b') in left_paras_and_instances[1])
-            #     print()
-            #     print(right_paras_and_instances[0])
-            #     print(right_paras_and_instances[1])
-            #     print("('c', 'y', 'y', 'a') in right_paras_and_instances[1]:", ('c', 'y', 'y', 'a') in right_paras_and_instances[1])
-            #     print("('b', 'x', 'x', 'c') in right_paras_and_instances[1]:", ('b', 'x', 'x', 'c') in right_paras_and_instances[1])
-            #     print("('a', 'z', 'z', 'b') in right_paras_and_instances[1]:", ('a', 'z', 'z', 'b') in right_paras_and_instances[1])
-
             return right_paras_and_instances
         elif _is_disjunction(gpl_tree):  # disjunction
             left_paras, left_instances = self._generate_instances(gpl_tree[0], paras_and_instances)
@@ -492,11 +474,6 @@ class GeometricConfiguration:
                 paras = list(paras_and_instances[0])  # list
                 instances = paras_and_instances[1]  # set
 
-            # if str(gpl_tree) == "('Eq', lm.ma - xy.ma)":
-            #     print(gpl_tree)
-            #     print(paras)
-            #     print(instances)
-
             if gpl_predicate in {'Eq', 'G', 'Geq', 'L', 'Leq', 'Ueq'}:  # generate instances according algebraic forms
                 dependent_entities = _get_geometric_constraints(gpl_predicate, gpl_paras, self.parsed_gdl)
 
@@ -516,16 +493,8 @@ class GeometricConfiguration:
                 for instance in instances.copy():  # check constraint
                     replace = dict(zip(paras, instance))
                     replaced_expr = _replace_expr(gpl_paras, replace)
-                    if not _satisfy_algebraic[gpl_predicate](replaced_expr, self.entity_sym_to_value):
+                    if not satisfy_algebraic_map[gpl_predicate](replaced_expr, self.entity_sym_to_value):
                         instances.remove(instance)
-
-                # if str(gpl_tree) == "('Eq', lm.ma - xy.ma)":
-                #     print(gpl_tree)
-                #     print(paras)
-                #     print(instances)
-                #     print("('c', 'y', 'y', 'a') in instances:", ('c', 'y', 'y', 'a') in instances)
-                #     print("('b', 'x', 'x', 'c') in instances:", ('b', 'x', 'x', 'c') in instances)
-                #     print("('a', 'z', 'z', 'b') in instances:", ('a', 'z', 'z', 'b') in instances)
 
             else:  # generate instances according relation
                 internal_same_ids = []  # [(j_a, j_b)]
@@ -708,12 +677,6 @@ class GeometricConfiguration:
                 premises, conclusion = self.theorem_instances[theorem_name][theorem_instance]
 
                 passed, premise_ids = self._check_premises(premises)  # check premises
-                # if theorem_name == "congruent_triangle_determination_asa" and theorem_instance == ('B', 'b', 'C', 'l', 'A', 'a', 'D', 'd', 'A', 'l', 'C', 'c'):
-                #     print("congruent_triangle_determination_asa", theorem_instance)
-                #     print(premises)
-                #     print(conclusion)
-                #     print(passed)
-                #     print()
                 if not passed:
                     continue
 
@@ -762,10 +725,8 @@ class GeometricConfiguration:
 
         else:  # atomic node: (predicate, instance)
             predicate, instance = premises
-            # print(premises)
             if predicate == 'Eq':  # algebraic premise
                 status, premise_ids = self._check_algebraic_premise(instance)
-                # print(predicate, instance, status)
                 if status == 1:
                     return True, premise_ids
 
@@ -791,13 +752,12 @@ class GeometricConfiguration:
                 expr = expr.subs(sym, self.sym_to_value[sym])
 
         if len(expr.free_symbols) == 0:
-            if _satisfy_algebraic['Eq'](expr):
+            if satisfy_algebraic_map['Eq'](expr):
                 return 1, premise_ids
             return -1, None
 
         if expr in self.solved_target_cache:
             return 1, self.solved_target_cache[expr] | premise_ids
-
         target_sym = symbols('t')
         equations = [target_sym - expr]
         syms = set(expr.free_symbols)
@@ -873,7 +833,7 @@ class GeometricConfiguration:
                 if replace is not None:
                     instance = _replace_expr(instance, replace)
 
-                return _satisfy_algebraic[predicate](instance, self.entity_sym_to_value)
+                return satisfy_algebraic_map[predicate](instance, self.entity_sym_to_value)
 
             else:  # geometric forms
                 if replace is not None:
@@ -888,8 +848,8 @@ class GeometricConfiguration:
                 return self._check_algebraic_forms(relation_gdl['algebraic_forms'], replace)
 
     def _add_fact(self, predicate, instance, premise_ids, operation_id):
-        if predicate == 'Eq':
-            return self._add_equation(predicate, instance, premise_ids, operation_id)
+        if predicate in satisfy_algebraic_map.keys():
+            return self._add_algebraic(predicate, instance, premise_ids, operation_id)
         elif predicate in {'Point', 'Line', 'Circle'}:
             return self._add_entity(predicate, instance, premise_ids, operation_id)
         elif predicate in {'SamePoint', 'SameLine', 'SameCircle'}:
@@ -960,7 +920,11 @@ class GeometricConfiguration:
         # Replace B with A in all relations and add new relation to self.facts
         for b_fact_id in range(len(self.facts)):
             predicate, instance, _, _, _ = self.facts[b_fact_id]
-            if predicate in {'Equation', 'Point', 'Line', 'Circle', 'SamePoint', 'SameLine', 'SameCircle'}:
+            if predicate in satisfy_algebraic_map.keys():
+                continue
+            if predicate in {'Point', 'Line', 'Circle'}:
+                continue
+            if predicate in {'SamePoint', 'SameLine', 'SameCircle'}:
                 continue
             if B not in instance:
                 continue
@@ -999,7 +963,7 @@ class GeometricConfiguration:
 
         return True, affected_goal_ids
 
-    def _add_equation(self, predicate, instance, premise_ids, operation_id):
+    def _add_algebraic(self, predicate, instance, premise_ids, operation_id):
         instance = self._adjust_expr(instance)
         if len(instance.free_symbols) == 0 or (predicate, instance) in self.fact_id:
             return False, set()
@@ -1013,7 +977,7 @@ class GeometricConfiguration:
         self.predicate_to_fact_ids[predicate].add(fact_id)
         self.fact_groups[operation_id].add(fact_id)
 
-        if self.operations[operation_id] == ('auto', 'solve_eq', None):
+        if predicate != 'Eq' or self.operations[operation_id] == ('auto', 'solve_eq', None):
             return True, set()
 
         new_simplified_eqs = [instance]
@@ -1041,9 +1005,6 @@ class GeometricConfiguration:
                 new_premise_ids_list.extend(premise_ids_list)
                 new_syms.update(syms)
 
-        # print("self.equations:", self.equations)
-        # print("instance:", instance)
-        # print("deleted_group_ids:", deleted_group_ids)
         for group_id in deleted_group_ids:  # delete old groups
             del self.equations[group_id]
 
@@ -1051,8 +1012,7 @@ class GeometricConfiguration:
         for sub_goal_id in self.simplified_eq_sub_goal:
             if len(new_syms & self.simplified_eq_sub_goal[sub_goal_id][2]) > 0:
                 affected_sub_goal_ids.add(sub_goal_id)
-        # print("sub_goal_ids:", sub_goal_ids)
-        # print()
+
         # solve equations
         new_syms = list(new_syms)
         solved_values = {}
@@ -1169,7 +1129,7 @@ class GeometricConfiguration:
                 decomposed.append((premises, root_sub_goal_ids, theorem_instance))
             else:
                 replace = dict(zip(theorem_gdl['paras'], theorem_instance))
-                conclusion = self._generate_conclusion(theorem_gdl['premises'], replace)
+                conclusion = self._generate_conclusion(theorem_gdl['conclusion'], replace)
                 root_sub_goal_ids = self._get_decomposed_sub_goal_ids(conclusion)
                 if len(root_sub_goal_ids) == 0:
                     return False
@@ -1444,6 +1404,7 @@ class GeometricConfiguration:
 
         construction_pf = '{0:<3}{1:<40}'
         construction_pfu = '\033[32m' + construction_pf + '\033[0m'
+        parsed_construction_pfu = '\033[37m{}\033[0m'
         print('\033[33m\nConstructions:\033[0m')
         for operation_id in self.constructions:
             construction = self.operations[operation_id][1] + ':' + self.operations[operation_id][2]
@@ -1455,19 +1416,18 @@ class GeometricConfiguration:
             used_branch, parsed_construction = self.constructions[operation_id]
             for branch in range(len(parsed_construction)):
                 t_entities, d_entities, added_facts, equations, inequalities, values = parsed_construction[branch]
-                t_entities = [_anti_parse_fact(fact) for fact in t_entities]
-                d_entities = [_anti_parse_fact(fact) for fact in d_entities]
-                added_facts = [_anti_parse_fact(fact) for fact in added_facts]
-                equations = [_anti_parse_fact(('Eq', fact)) for fact in equations]
-                inequalities = [_anti_parse_fact(fact) for fact in inequalities]
-                if branch + 1 == used_branch:
-                    s = '   branch: {} (solved), '.format(branch + 1)
-                else:
-                    s = '   branch: {}, '.format(branch + 1)
-                s += 'target_entities: {}, dependent_entities: {}, added_facts: {}\n'.format(
-                    str(t_entities), str(d_entities), str(added_facts))
-                s += '   equations: [{}], inequalities: [{}]\n'.format(', '.join([str(item) for item in equations]),
-                                                                       ', '.join([str(item) for item in inequalities]))
+                branch_str = '   branch: {}'.format(
+                    branch + 1)
+                t_entities = '   target_entities: {}'.format(
+                    str([_anti_parse_fact(fact) for fact in t_entities]))
+                dependent_entities = '   dependent_entities: {}'.format(
+                    str([_anti_parse_fact(fact) for fact in d_entities]))
+                added_facts = '   added_facts: {}'.format(
+                    str([_anti_parse_fact(fact) for fact in added_facts]))
+                equations = '   equations: {}'.format(
+                    ', '.join([_anti_parse_fact(('Eq', fact)) for fact in equations]))
+                inequalities = '   inequalities: {}'.format(
+                    ', '.join([_anti_parse_fact(fact) for fact in inequalities]))
                 if values is not None:
                     t_syms, solved_values = values
                     values = [f"({', '.join([str(sym) for sym in t_syms])})"]
@@ -1476,8 +1436,25 @@ class GeometricConfiguration:
                     values = f"[{', '.join(values)}]"
                 else:
                     values = 'None'
-                s += '   solved_values: {}\n'.format(values)
-                print(s)
+                solved_values = '   solved_values: {}'.format(values)
+
+                if branch + 1 == used_branch:
+                    print(branch_str)
+                    print(t_entities)
+                    print(dependent_entities)
+                    print(added_facts)
+                    print(equations)
+                    print(inequalities)
+                    print(solved_values)
+                else:
+                    parsed_construction_pfu.format(branch_str)
+                    parsed_construction_pfu.format(t_entities)
+                    parsed_construction_pfu.format(dependent_entities)
+                    parsed_construction_pfu.format(added_facts)
+                    parsed_construction_pfu.format(equations)
+                    parsed_construction_pfu.format(inequalities)
+                    parsed_construction_pfu.format(solved_values)
+                print()
 
         entity_pf = '{0:<12}{1:<15}{2:<31}{3:<25}{4:<25}{5:<15}{6:<100}'
         entity_pfu = '\033[32m' + entity_pf + '\033[0m'
@@ -1516,12 +1493,14 @@ class GeometricConfiguration:
         relation_pf = '{0:<12}{1:<40}{2:<28}{3:<28}{4:<15}{5:<100}'
         relation_pfu = '\033[32m' + relation_pf + '\033[0m'
         for predicate in self.predicate_to_fact_ids:
-            if predicate in ['Point', 'Line', 'Circle', 'Eq']:
+            if predicate in {'Point', 'Line', 'Circle'}:
+                continue
+            if predicate in satisfy_algebraic_map.keys():
                 continue
             if len(self.predicate_to_fact_ids[predicate]) == 0:
                 continue
 
-            print(f"\033[36mRelation - {predicate}:\033[0m")
+            print(f"\033[36m(Geometric) Relation - {predicate}:\033[0m")
             print('\033[36m' + relation_pf.format('fact_id', 'instance', 'premise_ids', 'entity_ids',
                                                   'operation_id', 'operation') + '\033[0m')
             for fact_id in sorted(list(self.predicate_to_fact_ids[predicate])):
@@ -1537,33 +1516,36 @@ class GeometricConfiguration:
                     print(relation_pf.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
             print()
 
-        if len(self.predicate_to_fact_ids['Eq']) > 0:
-            print('\033[36mRelation - Equations:\033[0m')
-            print('\033[36m' + relation_pf.format(
-                'fact_id', 'instance', 'premise_ids', 'entity_ids', 'operation_id', 'operation') + '\033[0m')
-            for fact_id in sorted(list(self.predicate_to_fact_ids['Eq'])):
-                predicate, instance, premise_ids, entity_ids, operation_id = self.facts[fact_id]
-                operation_ids.add(operation_id)
-                operation = _anti_parse_operation(self.operations[operation_id])
-                instance = str(instance).replace(' ', '')
-                premise_ids = _format_ids(premise_ids)
-                entity_ids = _format_ids(entity_ids)
-                if fact_id in goal_related_premise_ids:
-                    print(relation_pfu.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
-                else:
-                    print(relation_pf.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
-        print()
+        for predicate in satisfy_algebraic_map.keys():
+            if len(self.predicate_to_fact_ids[predicate]) > 0:
+                print(f'\033[36m(Algebraic) Relation - {predicate}:\033[0m')
+                print('\033[36m' + relation_pf.format(
+                    'fact_id', 'instance', 'premise_ids', 'entity_ids', 'operation_id', 'operation') + '\033[0m')
+                for fact_id in sorted(list(self.predicate_to_fact_ids[predicate])):
+                    predicate, instance, premise_ids, entity_ids, operation_id = self.facts[fact_id]
+                    operation_ids.add(operation_id)
+                    operation = _anti_parse_operation(self.operations[operation_id])
+                    instance = str(instance).replace(' ', '')
+                    premise_ids = _format_ids(premise_ids)
+                    entity_ids = _format_ids(entity_ids)
+                    if fact_id in goal_related_premise_ids:
+                        print(relation_pfu.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
+                    else:
+                        print(relation_pf.format(fact_id, instance, premise_ids, entity_ids, operation_id, operation))
+                print()
 
         if len(self.goals) > 0:
-            goal_pf = '{0:<12}{1:<40}{2:<18}{3:<12}{4:<26}{5:<15}{6:<100}'
+            goal_pf = '{0:<11}{1:<55}{2:<6}{3:<10}{4:<26}{5:<15}{6:<100}'
             goal_pfs = '\033[32m' + goal_pf + '\033[0m'
             goal_pfu = '\033[31m' + goal_pf + '\033[0m'
             print("\033[34mGoals:\033[0m")
-            print('\033[34m' + goal_pf.format('goal_id', 'sub_goal_id_tree', 'root_sub_goal_id', 'status',
+            print('\033[34m' + goal_pf.format('goal_id', 'sub_goal_id_tree', 'root', 'status',
                                               'premise_ids', 'operation_id', 'operation') + '\033[0m')
             for goal_id in range(len(self.goals)):
                 sub_goal_id_tree, operation_id, root_sub_goal_id = self.goals[goal_id]
                 sub_goal_id_tree = str(sub_goal_id_tree).replace(' ', '').replace("'", '')
+                if len(sub_goal_id_tree) > 53:
+                    sub_goal_id_tree = sub_goal_id_tree[:50] + '...'
                 operation_ids.add(operation_id)
                 operation = _anti_parse_operation(self.operations[operation_id])
                 root_sub_goal_id = str(root_sub_goal_id)
@@ -1581,7 +1563,7 @@ class GeometricConfiguration:
                                          operation_id, operation))
             print()
 
-            sub_goal_pf = '{0:<12}{1:<25}{2:<40}{3:<10}{4:<30}{5:<15}{6:<50}'
+            sub_goal_pf = '{0:<12}{1:<30}{2:<40}{3:<10}{4:<30}{5:<15}{6:<50}'
             sub_goal_pfs = '\033[32m' + sub_goal_pf + '\033[0m'
             sub_goal_pfu = '\033[31m' + sub_goal_pf + '\033[0m'
             print("\033[34mSub Goals:\033[0m")
@@ -1656,16 +1638,18 @@ class GeometricConfiguration:
                 print()
 
         if len(self.simplified_eq_sub_goal) > 0:
-            algebraic_goal_pf = '{0:<10}{1:<40}{2:<20}{3:<30}{4:<15}'
+            algebraic_goal_pf = '{0:<10}{1:<40}{2:<20}{3:<45}{4:<20}'
             print('\033[35mAlgebraic System - Algebraic Goals:\033[0m')
             print('\033[35m' + algebraic_goal_pf.format(
-                'goal_id', 'simplified_eq', 'premise_ids', 'dependent_syms', 'group_ids') + '\033[0m')
+                'goal_id', 'simplified_eq', 'premise_ids', 'dependent_syms', 'dependent_group_ids') + '\033[0m')
             for goal_id in self.simplified_eq_sub_goal:
                 simplified_eq, premise_ids, dependent_syms, group_ids = self.simplified_eq_sub_goal[goal_id]
                 simplified_eq = str(simplified_eq).replace(' ', '')
                 premise_ids = _format_ids(premise_ids)
                 dependent_syms = ','.join([str(item) for item in sorted(list(dependent_syms), key=str)])
                 dependent_syms = '{' + dependent_syms + '}'
+                if len(dependent_syms) > 43:
+                    dependent_syms = dependent_syms[:40] + '...'
                 group_ids = _format_ids(group_ids)
                 print(algebraic_goal_pf.format(goal_id, simplified_eq, premise_ids, dependent_syms, group_ids))
             print()
@@ -1721,20 +1705,20 @@ class GeometricConfiguration:
                 if edge in edges:
                     continue
 
-                serialized_graph.append('<p>')
+                serialized_graph.append('<premises>')
                 for premise_id in edge[0]:
                     predicate, instance, _, _, _ = self.facts[premise_id]
-                    if serialized_graph[-1] != '<p>':
+                    if serialized_graph[-1] != '<premises>':
                         serialized_graph.append('&')
                     serialized_graph.extend(_serialize_fact(predicate, instance))
 
-                serialized_graph.append('<o>')
+                serialized_graph.append('<operation>')
                 serialized_graph.extend(_serialize_operation(self.operations[operation_id]))
 
-                serialized_graph.append('<c>')
+                serialized_graph.append('<conclusion>')
                 for conclusion_id in edge[2]:
                     predicate, instance, _, _, _ = self.facts[conclusion_id]
-                    if serialized_graph[-1] != '<c>':
+                    if serialized_graph[-1] != '<conclusion>':
                         serialized_graph.append('|')
                     serialized_graph.extend(_serialize_fact(predicate, instance))
 
@@ -1749,91 +1733,163 @@ class GeometricConfiguration:
 
         for goal_id in range(1, len(self.goals)):
             sub_goal_id_tree, operation_id, root_sub_goal_id = self.goals[goal_id]
-            serialized_graph.append('<g>')
+            serialized_graph.append('<goal>')
             predicate, instance, _ = self.sub_goals[root_sub_goal_id]
             serialized_graph.extend(_serialize_fact(predicate, instance))
-            serialized_graph.append('<s>')
+            serialized_graph.append('<sub_goals>')
             serialized_graph.extend(_serialize_goal(self, sub_goal_id_tree))
 
         return serialized_graph
 
-    def draw_gc(self, save_path='./', filename='gc', file_format='pdf'):
-        _, ax = plt.subplots()
+    def draw_gc(self, save_path='./', filename='gc', file_format='pdf', scale=1):
+        center_x = float((self.sample_range['x_max'] + self.sample_range['x_min']) / 2)
+        center_y = float((self.sample_range['y_max'] + self.sample_range['y_min']) / 2)
+        radius = float(max((self.sample_range['x_max'] - self.sample_range['x_min']),
+                           (self.sample_range['y_max'] - self.sample_range['y_min']))) / 2
+        _, ax = plt.subplots(figsize=(radius * 4 * scale, radius * 4 * scale), dpi=512 / scale)
         ax.axis('equal')  # maintain the circle's aspect ratio
         ax.axis('off')  # hide the axes
-        middle_x = (self.sample_range['x_max'] + self.sample_range['x_min']) / 2
-        range_x = (self.sample_range['x_max'] - self.sample_range['x_min']) / 2 * self.sample_rate
-        middle_y = (self.sample_range['y_max'] + self.sample_range['y_min']) / 2
-        range_y = (self.sample_range['y_max'] - self.sample_range['y_min']) / 2 * self.sample_rate
-        x_min = float(middle_x - range_x)
-        x_max = float(middle_x + range_x)
-        y_min = float(middle_y - range_y)
-        y_max = float(middle_y + range_y)
-        x_adjust = (range_x * 0.02)
-        y_adjust = (range_y * 0.02)
-        text_size = int(max(range_x, range_y) * 10)
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
+        ax.set_xlim(center_x - radius * 1.3, center_x + radius * 1.3)
+        ax.set_ylim(center_y - radius * 1.3, center_y + radius * 1.3)
 
         for fact_id in self.predicate_to_fact_ids['Line']:
             line = self.facts[fact_id][1][0]
             k = float(self.entity_sym_to_value[symbols(f'{line}.k')])
             b = float(self.entity_sym_to_value[symbols(f'{line}.b')])
-            ax.axline((0, b), slope=k, color='blue')
+            ax.axline((0, b), slope=k, color='blue', linewidth=radius * 0.8)
 
         for fact_id in self.predicate_to_fact_ids['Circle']:
             circle = self.facts[fact_id][1][0]
             u = float(self.entity_sym_to_value[symbols(f'{circle}.u')])
             v = float(self.entity_sym_to_value[symbols(f'{circle}.v')])
             r = float(self.entity_sym_to_value[symbols(f'{circle}.r')])
-            ax.add_artist(plt.Circle((u, v), r, color="green", fill=False))
+            ax.add_artist(plt.Circle((u, v), r, color="green", fill=False, linewidth=radius * 0.8))
 
         for fact_id in self.predicate_to_fact_ids['Point']:
             point = self.facts[fact_id][1][0]
             x = float(self.entity_sym_to_value[symbols(f'{point}.x')])
             y = float(self.entity_sym_to_value[symbols(f'{point}.y')])
-            ax.plot(x, y, "o", color='red')
-            ax.text(x, y + y_adjust, point, ha='center', va='bottom', color='black', size=text_size)
+            ax.plot(x, y, "o", color='red', markersize=radius * 2.5)
+        # ax.plot(center_x, center_y, "o", color='green', markersize=radius * 3.5)
+
+        random_number = random.Random(0)
+        random_epoch = 100
+        added_text = []  # (x, y)
+
+        def _get_crossed_distance(checked):
+            crossed = []
+            for added in added_text:
+                distance_between_text = math.sqrt((checked[0] - added[0]) ** 2 + (checked[1] - added[1]) ** 2)
+                if distance_between_text < radius * 0.16 / scale:
+                    crossed.append(distance_between_text)
+            if len(crossed) == 0:
+                return 0
+            return sum(crossed) / len(crossed)
+
+        def _get_text_coordinates(func, args):
+            best_x, best_y = func(*args)
+            best_crossed_distance = _get_crossed_distance((best_x, best_y))
+            if best_crossed_distance != 0:
+                for epoch_count in range(random_epoch):
+                    random_x, random_y = func(*args)
+                    crossed_distance = _get_crossed_distance((random_x, random_y))
+                    if crossed_distance == 0:
+                        best_x = random_x
+                        best_y = random_y
+                        break
+                    if crossed_distance > best_crossed_distance:
+                        best_x = random_x
+                        best_y = random_y
+                        best_crossed_distance = crossed_distance
+            added_text.append((best_x, best_y))
+            return best_x, best_y
+
+        def _check_text_coordinates(text_x, text_y):
+            if (center_x - radius * 1.2 < text_x < center_x + radius * 1.2 and
+                    center_y - radius * 1.2 < text_y < center_y + radius * 1.2):
+                return True
+            return False
+
+        def _get_point_text_coordinates(point_x, point_y):
+            angle_rad = math.radians(random_number.randint(0, 359))
+            random_x = point_x + (radius * 0.1 / scale) * math.cos(angle_rad)
+            random_y = point_y + (radius * 0.1 / scale) * math.sin(angle_rad)
+
+            if not _check_text_coordinates(random_x, random_y):
+                random_x, random_y = _get_point_text_coordinates(point_x, point_y)
+            return random_x, random_y
+
+        for fact_id in self.predicate_to_fact_ids['Point']:
+            point = self.facts[fact_id][1][0]
+            x, y = _get_text_coordinates(
+                _get_point_text_coordinates,
+                (float(self.entity_sym_to_value[symbols(f'{point}.x')]),
+                 float(self.entity_sym_to_value[symbols(f'{point}.y')]))
+            )
+            ax.text(x, y, point, ha='center', va='center', color='black', fontsize=radius * 10)
+
+        def _get_line_text_coordinates(line_k, line_b):
+            if abs(line_k) > 1:  # sample y
+                if random_number.randint(0, 1) == 0:
+                    random_y = random_number.uniform(center_y - radius * 1.1, center_y - radius)
+                else:
+                    random_y = random_number.uniform(center_y + radius, center_y + radius * 1.1)
+                random_x = (random_y - line_b) / line_k
+            else:  # sample x
+                if random_number.randint(0, 1) == 0:
+                    random_x = random_number.uniform(center_x - radius * 1.1, center_x - radius)
+                else:
+                    random_x = random_number.uniform(center_x + radius, center_x + radius * 1.1)
+                random_y = line_k * random_x + line_b
+
+            # x_step = math.sqrt(((radius * 0.08) ** 2 * (line_k ** 2)) / (line_k ** 2 + 1))
+            #
+            # if random_number.randint(0, 1) == 0:
+            #     random_x = random_x - x_step
+            #     x_step = -x_step
+            # else:
+            #     random_x = random_x + x_step
+            #
+            # random_y = - 1 / line_k * x_step + random_y
+
+            if not _check_text_coordinates(random_x, random_y):
+                random_x, random_y = _get_line_text_coordinates(line_k, line_b)
+            return random_x, random_y
 
         for fact_id in self.predicate_to_fact_ids['Line']:
             line = self.facts[fact_id][1][0]
-            k = float(self.entity_sym_to_value[symbols(f'{line}.k')])
-            b = float(self.entity_sym_to_value[symbols(f'{line}.b')])
-            if k < -1:
-                y = y_max - range_y * 0.1
-                x = (y - b) / k + x_adjust
-            elif k < 0:
-                x = x_min + range_x * 0.1
-                y = k * x + b + y_adjust
-            elif k < 1:
-                x = x_max - range_x * 0.1
-                y = k * x + b + y_adjust
-            else:  # k > 1
-                y = y_max - range_y * 0.1
-                x = (y - b) / k - x_adjust
-            ax.text(x, y, line, ha='center', va='bottom', color='black', size=text_size)
+            x, y = _get_text_coordinates(
+                _get_line_text_coordinates,
+                (float(self.entity_sym_to_value[symbols(f'{line}.k')]),
+                 float(self.entity_sym_to_value[symbols(f'{line}.b')]))
+            )
+            ax.text(x, y, line, ha='center', va='center', color='black', fontsize=radius * 10)
+
+        def _get_circle_text_coordinates(circle_u, circle_v, circle_r):
+            angle_deg = math.degrees(math.atan((center_y - circle_v) / (center_x - circle_u)))
+            angle_deg = angle_deg + random_number.randint(-30, 30)
+            if center_x < circle_u:
+                angle_deg = (angle_deg + 180) % 360
+            # random_x = circle_u + (circle_r + radius * 0.08) * math.cos(math.radians(angle_deg))
+            # random_y = circle_v + (circle_r + radius * 0.08) * math.sin(math.radians(angle_deg))
+            random_x = circle_u + circle_r * math.cos(math.radians(angle_deg))
+            random_y = circle_v + circle_r * math.sin(math.radians(angle_deg))
+
+            if not _check_text_coordinates(random_x, random_y):
+                random_x, random_y = _get_circle_text_coordinates(circle_u, circle_v, circle_r)
+            return random_x, random_y
 
         for fact_id in self.predicate_to_fact_ids['Circle']:
             circle = self.facts[fact_id][1][0]
-            u = float(self.entity_sym_to_value[symbols(f'{circle}.u')])
-            v = float(self.entity_sym_to_value[symbols(f'{circle}.v')])
-            r = float(self.entity_sym_to_value[symbols(f'{circle}.r')])
-            k = range_y / range_x
-            k1 = k
-            k2 = -k
-            b1 = y_max - k1 * x_max
-            b2 = y_max - k2 * x_min
-            if v > k1 * u + b1 and v > k2 * u + b2:
-                v = v - r - y_adjust * 5
-            elif k1 * u + b1 < v < k2 * u + b2:
-                u = u + r + x_adjust
-            elif k1 * u + b1 > v > k2 * u + b2:
-                u = u - r - x_adjust * 2
-            else:
-                v = v + r + y_adjust
-            ax.text(u, v, circle, ha='center', va='bottom', color='black', size=text_size)
+            x, y = _get_text_coordinates(
+                _get_circle_text_coordinates,
+                (float(self.entity_sym_to_value[symbols(f'{circle}.u')]),
+                 float(self.entity_sym_to_value[symbols(f'{circle}.v')]),
+                 float(self.entity_sym_to_value[symbols(f'{circle}.r')]))
+            )
+            ax.text(x, y, circle, ha='center', va='center', color='black', fontsize=radius * 10)
 
-        plt.savefig(save_path + filename + '.' + file_format)
+        plt.savefig(save_path + filename + '.' + file_format, bbox_inches='tight')
 
     def draw_sg(self, save_path='./', filename='sg', file_format='pdf'):
         forward_graph = Graph()

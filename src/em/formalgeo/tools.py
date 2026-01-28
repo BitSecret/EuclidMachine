@@ -27,23 +27,17 @@ _gil = ('𝜶', '𝜷', '𝜸', '𝜹', '𝜺', '𝜻', '𝜼', '𝜽', '𝜾', 
 entity_letters = tuple(  # available entity letters
     list(_lu) + list(_lsu) + list(_gu) + list(_giu) + list(_ll) + list(_lsl) + list(_gl) + list(_gil)
 )
-expr_letters = tuple(  # letter in expr
-    ['+', '-', '**', '*', '/', 'sqrt', 'atan', 'Mod', 'nums', 'pi', '(', ')'] +
-    ['.dpp', '.dpl', '.dpc', '.ma', '.rc']
-)
+expr_letters = (  # letter in expr
+    '+', '-', '**', '*', '/', 'sqrt', 'atan', 'Mod', 'nums', 'pi', '(', ')'
+)  # with defined attributions
 delimiter_letters = (  # letter distinguish between different part of fact and operation
     '&', '|', '~', ':',
-    '<init_fact>',  # initial facts
-    '<p>',  # premise
-    '<o>',  # operation,
-    '<c>',  # conclusion
-    '<init_goal>',  # initial goals
-    '<g>',  # goal
-    '<s>',  # sub goal
+    '<init_fact>', '<premises>', '<operation>', '<conclusion>',  # forward
+    '<init_goal>', '<goal>', '<sub_goals>',  # backward
 )
 theorem_letters = (  # preset theorem name
-    'multiple_forms', 'auto_extend', 'solve_eq', 'same_entity_extend'
-)
+    'same_entity_extend', 'solve_eq'
+)  # with defined theorems
 
 """↑-------------Vocabulary------------↑"""
 """↓---------------Output--------------↓"""
@@ -148,10 +142,114 @@ def _satisfy_ueq(expr, sym_to_value=None):
     return expr.subs(sym_to_value).evalf(n=precision, chop=chop) != 0
 
 
-_satisfy_algebraic = {'Eq': _satisfy_eq, 'G': _satisfy_g, 'Geq': _satisfy_geq,
-                      'L': _satisfy_l, 'Leq': _satisfy_leq, 'Ueq': _satisfy_ueq}
+satisfy_algebraic_map = {
+    'Eq': _satisfy_eq, 'G': _satisfy_g, 'Geq': _satisfy_geq, 'L': _satisfy_l, 'Leq': _satisfy_leq, 'Ueq': _satisfy_ueq
+}
 
-negation_map = {'Eq': 'Ueq', 'G': 'Leq', 'Geq': 'L', 'L': 'Geq', 'Leq': 'G', 'Ueq': 'Eq'}
+negation_map = {
+    'Eq': 'Ueq', 'G': 'Leq', 'Geq': 'L', 'L': 'Geq', 'Leq': 'G', 'Ueq': 'Eq'
+}
+
+
+def _add(paras):
+    result = paras[0]
+    for para in paras[1:]:
+        result += para
+    return result
+
+
+def _sub(paras):
+    return paras[0] - paras[1]
+
+
+def _mul(paras):
+    result = paras[0]
+    for para in paras[1:]:
+        result *= para
+    return result
+
+
+def _div(paras):
+    return paras[0] / paras[1]
+
+
+def _pow(paras):
+    return paras[0] ** paras[1]
+
+
+def _log(paras):
+    return log(paras[0])
+
+
+def _abs(paras):
+    return (paras[0] ** 2) ** 0.5
+
+
+def _squared_norm(paras):
+    result = 0
+    for l in range(0, len(paras), 2):
+        result += (paras[l + 1] - paras[l]) ** 2
+    return result
+
+
+def _squared_distance_point_to_line(paras):
+    x, y, k, b = paras
+    return (x * k - y + b) ** 2 / (k ** 2 + 1)
+
+
+def _ma(paras):
+    return ((atan(paras[0]) - atan(paras[1])) * 180 / pi) % 180
+
+
+def _pp(paras):
+    return (paras[2] - paras[0]) ** 2 + (paras[3] - paras[1]) ** 2 - paras[4] ** 2
+
+
+def _circumcenter_x(paras):
+    x1, y1, x2, y2, x3, y3 = paras
+    d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+    return ((x1 ** 2 + y1 ** 2) * (y2 - y3) + (x2 ** 2 + y2 ** 2) * (y3 - y1) + (x3 ** 2 + y3 ** 2) * (y1 - y2)) / d
+
+
+def _circumcenter_y(paras):
+    x1, y1, x2, y2, x3, y3 = paras
+    d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+    return ((x1 ** 2 + y1 ** 2) * (x3 - x2) + (x2 ** 2 + y2 ** 2) * (x1 - x3) + (x3 ** 2 + y3 ** 2) * (x2 - x1)) / d
+
+
+def _orthocenter_x(paras):
+    x1, _, x2, _, x3, _ = paras
+    return x1 + x2 + x3 - 2 * _circumcenter_x(paras)
+
+
+def _orthocenter_y(paras):
+    _, y1, _, y2, _, y3 = paras
+    return y1 + y2 + y3 - 2 * _circumcenter_y(paras)
+
+
+def _incenter_x(paras):
+    x1, y1, x2, y2, x3, y3 = paras
+    a = ((x3 - x2) ** 2 + (y3 - y2) ** 2) ** 0.5
+    b = ((x1 - x3) ** 2 + (y1 - y3) ** 2) ** 0.5
+    c = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    return (a * x1 + b * x2 + c * x3) / (a + b + c)
+
+
+def _incenter_y(paras):
+    x1, y1, x2, y2, x3, y3 = paras
+    a = ((x3 - x2) ** 2 + (y3 - y2) ** 2) ** 0.5
+    b = ((x1 - x3) ** 2 + (y1 - y3) ** 2) ** 0.5
+    c = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    return (a * y1 + b * y2 + c * y3) / (a + b + c)
+
+
+algebraic_operation_map = {
+    'Add': _add, 'Sub': _sub, 'Mul': _mul, 'Div': _div, 'Pow': _pow, 'Log': _log, 'Abs': _abs,
+    'SquaredNorm': _squared_norm, 'SquaredDistancePointToLine': _squared_distance_point_to_line, 'Ma': _ma, 'Pp': _pp,
+    'CircumCenterX': _circumcenter_x, 'CircumCenterY': _circumcenter_y,
+    'OrthocenterX': _orthocenter_x, 'OrthocenterY': _orthocenter_y,
+    'IncenterX': _incenter_x, 'IncenterY': _incenter_y
+}
 
 """↑-------------Algebraic-------------↑"""
 """↓--------------Parser---------------↓"""
@@ -292,7 +390,7 @@ def _parse_one_theorem(theorem, gdl, parsed_gdl):
     geometric_constraints.update(_get_geometric_constraints(conclusion[0], conclusion[1], parsed_gdl))
 
     if len(geometric_constraints) != len(paras) or set([e[1][0] for e in geometric_constraints]) != set(paras):
-        raise Exception(f"Geometric constraints of premises and conclusion.")
+        raise Exception(f"Conflict geometric constraints of premises and conclusion.")
 
     parsed_gdl['Theorems'][name] = {
         'paras': paras,
@@ -302,7 +400,7 @@ def _parse_one_theorem(theorem, gdl, parsed_gdl):
 
 
 def _paras_is_consistent(predicate, instance, paras):
-    if predicate in {'Eq', 'G', 'Geq', 'L', 'Leq', 'Ueq'}:
+    if predicate in satisfy_algebraic_map.keys():
         for sym in instance.free_symbols:
             for para in list(str(sym).split('.')[0]):
                 if para not in paras:
@@ -332,7 +430,7 @@ def _parse_geometric_constraints(geometric_constraints, paras):
 
 def _get_geometric_constraints(predicate, instance, parsed_gdl):
     dependent_entities = []  # [('Point', ('A',))]
-    if predicate in {'Eq', 'G', 'Geq', 'L', 'Leq', 'Ueq'}:
+    if predicate in satisfy_algebraic_map.keys():
         for sym in instance.free_symbols:
             entities, attr = str(sym).split('.')
             replace = dict(zip(parsed_gdl['Attributions'][attr]['paras'], entities))
@@ -372,7 +470,7 @@ def _parse_algebraic_fact(fact):
     Parse an algebra constraint to logic form.
 
     Args:
-        algebra_constraint (str): Algebra relation and expression. The components include algebra relation types,
+        fact (str): Algebra relation and expression. The components include algebra relation types,
         algebraic operations, the symbolic representations of measures and constants. Such as:
         'Eq(Sub(A.y,Add(Mul(l.k,A.x),l.b)))', 'G(Sub(Mul(Sub(C.x,B.x),Sub(A.y,B.y)),Mul(Sub(C.y,B.y),Sub(A.x,B.x))))'.
 
@@ -425,34 +523,7 @@ def _parse_algebraic_fact(fact):
 
             operation = stack.pop()
 
-            if operation == 'Add':
-                result = 0
-                for l in range(len(paras)):
-                    result += paras[l]
-            elif operation == 'Sub':
-                result = paras[0] - paras[1]
-            elif operation == 'Mul':
-                result = 1
-                for l in range(len(paras)):
-                    result *= paras[l]
-            elif operation == 'Div':
-                result = paras[0] / paras[1]
-            elif operation == 'Pow':
-                result = paras[0] ** paras[1]
-            elif operation == 'SquaredNorm':  # SquaredNorm(x1,x2,y1,y2,z1,z2,...)
-                result = 0
-                for l in range(0, len(paras), 2):
-                    result += (paras[l + 1] - paras[l]) ** 2
-            elif operation == 'Ma':  # Ma(k1,k2)
-                result = ((atan(paras[0]) - atan(paras[1])) * 180 / pi) % 180
-            elif operation == 'Pp':  # Pp(x,y,cx,cy,r)
-                result = (paras[2] - paras[0]) ** 2 + (paras[3] - paras[1]) ** 2 - paras[4] ** 2
-            elif operation == 'Log':  # Log(x)
-                result = log(paras[0])
-            else:
-                raise Exception(f"Unknown operation '{operation}' in algebra constraint '{fact}'.")
-
-            stack.append(result)
+            stack.append(algebraic_operation_map[operation](paras))
 
         j = j + 1
 
@@ -466,7 +537,7 @@ def _replace_instance(instance, replace):
     """Replace instances according to the replacement mapping.
 
     Args:
-        paras (list): List of entity. Such as ['A', 'B', 'C'].
+        instance (list): List of entity. Such as ['A', 'B', 'C'].
         replace (dict): Keys are the old entity and values are the new entity. Such As {'A': 'B', 'B': 'C', 'C': 'D'}.
     Returns:
         replaced_instances: Replaced instances. Such as ['B', 'C', 'D'].
@@ -728,7 +799,7 @@ def _get_algebraic_forms(algebraic_forms, parsed_gdl, replace=None):
 
     else:  # atomic form
         predicate, instance = algebraic_forms
-        if predicate in {'Eq', 'G', 'Geq', 'L', 'Leq', 'Ueq'}:
+        if predicate in satisfy_algebraic_map.keys():
             if replace is not None:
                 instance = _replace_expr(instance, replace)
             return predicate, instance
@@ -741,6 +812,8 @@ def _get_algebraic_forms(algebraic_forms, parsed_gdl, replace=None):
 
 
 def _parse_expr_to_algebraic_forms(expr, parsed_gdl):
+    if len(expr.free_symbols) == 0:
+        return expr
     attr = str(list(expr.free_symbols)[0]).split('.')[0]
     if attr in {'x', 'y', 'k', 'b', 'u', 'v', 'r'}:
         return expr
@@ -770,7 +843,9 @@ def _parse_construction(construction, parsed_gdl):
     for i in range(len(constraints)):  # parse to logic form
         if constraints[i] in {'&', '|', '~', '(', ')'}:
             continue
-        if constraints[i].startswith('Eq('):  # algebraic relation
+        if (constraints[i].startswith('Eq(') or constraints[i].startswith('G(') or
+                constraints[i].startswith('Geq(') or constraints[i].startswith('L(') or
+                constraints[i].startswith('Leq(') or constraints[i].startswith('Ueq(')):  # algebraic relation
             constraints[i] = _parse_algebraic_fact(constraints[i])
 
         else:  # geometric relation
@@ -802,7 +877,7 @@ def _parse_construction(construction, parsed_gdl):
             else:
                 algebraic_forms.append('~')
 
-            if predicate == 'Eq':
+            if predicate in satisfy_algebraic_map.keys():
                 instance = _parse_expr_to_algebraic_forms(instance, parsed_gdl)
 
             algebraic_forms.append((predicate, instance))
@@ -904,7 +979,7 @@ def _anti_parse_operation(operation):
 
 def _anti_parse_fact(fact):
     predicate, instance = fact
-    if predicate in {'Eq', 'G', 'Geq', 'L', 'Leq', 'Ueq'}:
+    if predicate in satisfy_algebraic_map.keys():
         return f"{predicate}({str(instance).replace(' ', '')})"
     else:
         return f"{predicate}({','.join(instance)})"
