@@ -1,0 +1,59 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "description": "几何构型生成系统配置文件",
+    "created": "2026-01-29",
+    "author": "EM QcQ"
+  },
+  "global": {
+    "default_output_dir": "../../../data/cdl_batch_gen",
+    "default_gdl_file": "../../../data/gdl/gdl-yc-260126.json"
+  },
+  "generation": {
+    "simple": {
+      "num_configs": 10,
+      "description": "简单示例模式：生成少量构型用于快速测试和演示"
+    },
+    "batch": {
+      "default_num_configs": 10000,
+      "default_processes": 4,
+      "description": "批量生成模式：用于大规模构型生成"
+    },
+    "test": {
+      "num_configs": 100,
+      "processes": 2,
+      "description": "测试模式：用于功能测试和调试"
+    }
+  },
+  "entity_generation": {
+    "constraints": {
+      "min_total_entities": 6,
+      "max_total_entities": 15,
+      "description": "实体总体数量范围约束（向后兼容）"
+    },
+    "target_distribution": {
+      "6": 10,
+      "7": 10,
+      "8": 10,
+      "9": 10,
+      "10": 10,
+      "11": 10,
+      "12": 10,
+      "13": 10,
+      "14": 10,
+      "15": 10
+    },
+    "description": "每个实体数量的目标生成数量。key为实体数量，value为该数量需要生成的构型数量。命令行参数优先级高于此配置。"
+  },
+  "storage": {
+    "auto_validate": true,
+    "batch_size": 5000,
+    "output_format": "jsonl",
+    "description": "存储和验证配置"
+  },
+  "validation": {
+    "enable_jacobian": true,
+    "jacobian_threshold": 1,
+    "description": "验证和约束满足配置"
+  }
+}
