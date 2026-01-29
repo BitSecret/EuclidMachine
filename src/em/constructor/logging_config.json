@@ -1,0 +1,102 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "simple": {
+            "format": "[%(levelname)s] %(message)s"
+        },
+        "standard": {
+            "format": "%(asctime)s %(name)s\n[%(levelname)s] %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
+        },
+        "detailed": {
+            "format": "%(asctime)s %(name)s:\n[%(levelname)s] (line %(lineno)d in %(module)s):\n%(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S.%f"
+        }
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout"
+        }
+    },
+    "loggers": {
+        "em.constructor": {
+            "handlers": [
+                "console"
+            ],
+            "level": "DEBUG",
+            "propagate": false
+        },
+        "em.constructor.gcgenerator": {
+            "handlers": [
+                "console"
+            ],
+            "level": "INFO",
+            "propagate": false
+        },
+        "em.constructor.gdlplayer": {
+            "handlers": [
+                "console"
+            ],
+            "level": "INFO",
+            "propagate": false
+        },
+        "__main__": {
+            "handlers": [
+                "console"
+            ],
+            "level": "INFO",
+            "propagate": false
+        }
+    },
+    "root": {
+        "handlers": [
+            "console"
+        ],
+        "level": "WARNING"
+    },
+    "generation": {
+        "simple": {
+            "num_configs": 10,
+            "description": "简单示例模式"
+        },
+        "batch": {
+            "default_num_configs": 10000,
+            "default_processes": 4,
+            "description": "批量生成模式"
+        },
+        "test": {
+            "num_configs": 100,
+            "processes": 2,
+            "description": "测试模式"
+        }
+    },
+    "entity_generation": {
+        "constraints": {
+            "min_total_entities": 2,
+            "max_total_entities": 8,
+            "entity_types": {
+                "points": {
+                    "min_count": 1,
+                    "max_count": 5
+                },
+                "lines": {
+                    "min_count": 1,
+                    "max_count": 4
+                },
+                "circles": {
+                    "min_count": 0,
+                    "max_count": 3
+                }
+            }
+        }
+    },
+    "storage": {
+        "auto_validate": true,
+        "batch_size": 5000,
+        "output_format": "jsonl"
+    }
+}
