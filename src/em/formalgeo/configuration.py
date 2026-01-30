@@ -6,13 +6,16 @@ from em.formalgeo.tools import _serialize_fact, _serialize_operation, _serialize
 from em.formalgeo.tools import _is_negation, _is_conjunction, _is_disjunction
 from em.formalgeo.tools import _replace_instance, _replace_expr
 from em.formalgeo.tools import _anti_parse_operation, _anti_parse_fact, _format_ids
-from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet
+from sympy import symbols, nonlinsolve, tan, pi, FiniteSet, EmptySet, Float
 from func_timeout import func_timeout, FunctionTimedOut
 from graphviz import Graph
 import matplotlib.pyplot as plt
 import random
 import copy
 import math
+
+plt.rcParams['mathtext.fontset'] = 'stix'
+plt.rcParams['font.sans-serif'] = ['STIXGeneral']
 
 
 class GeometricConfiguration:
@@ -343,9 +346,18 @@ class GeometricConfiguration:
         while len(solved_values) < self.sample_max_number and epoch < self.sample_max_epoch:
             constraint_value = constraint_values[epoch % len(constraint_values)]  # iterative select constraint value
             random_value = self._random_value(t_syms, constraint_value)
+
+            passed = True  # filter complex numbers
+            for value in random_value:
+                if type(value) is not Float:
+                    passed = False
+                    break
+            if not passed:
+                continue
+
             sym_to_value = dict(zip(t_syms, random_value))
 
-            satisfied = True
+            satisfied = True  # check inequality
             for algebraic_relation, expr in replaced_inequalities:
                 if not satisfy_algebraic_map[algebraic_relation](expr, sym_to_value):
                     satisfied = False
@@ -358,6 +370,7 @@ class GeometricConfiguration:
         return solved_values
 
     def _random_value(self, syms, constraint_value):
+        # print(constraint_value)
         random_values = {}
         free_symbols = set()
         for i in range(len(syms)):  # save k for sampling b
@@ -405,6 +418,8 @@ class GeometricConfiguration:
                 random_values[sym] = random_b
 
         solved_value = [item.subs(random_values).evalf(n=15, chop=False) for item in constraint_value]
+        # print(solved_value)
+        # print()
 
         return solved_value
 
@@ -934,7 +949,7 @@ class GeometricConfiguration:
             affected_goal_ids.update(sub_goal_ids)
 
         # For any symbols in self.sym_to_value, if contain B, add A.sym - self.sym_to_value[B.sym] to self.facts
-        for b_sym in self.sym_to_value:
+        for b_sym in self.sym_to_value.copy():
             entities, attr = str(b_sym).split('.')
             if B not in entities:
                 continue
@@ -942,7 +957,7 @@ class GeometricConfiguration:
             if a_sym in self.sym_to_value:
                 continue
             instance = a_sym - self.sym_to_value[b_sym]
-            b_fact_id = self.fact_id[('Eq', instance)]
+            b_fact_id = self.fact_id[('Eq', b_sym - self.sym_to_value[b_sym])]
             operation_id = self._add_operation(('auto', 'same_entity_extend', None))
             _, sub_goal_ids = self._add_fact('Eq', instance, {fact_id, b_fact_id}, operation_id)
             affected_goal_ids.update(sub_goal_ids)
@@ -1810,13 +1825,14 @@ class GeometricConfiguration:
                 return True
             return False
 
-        def _get_point_text_coordinates(point_x, point_y):
+        def _get_point_text_coordinates(point_x, point_y, repeat=10):
             angle_rad = math.radians(random_number.randint(0, 359))
             random_x = point_x + (radius * 0.1 / scale) * math.cos(angle_rad)
             random_y = point_y + (radius * 0.1 / scale) * math.sin(angle_rad)
 
-            if not _check_text_coordinates(random_x, random_y):
-                random_x, random_y = _get_point_text_coordinates(point_x, point_y)
+            repeat -= 1
+            if not _check_text_coordinates(random_x, random_y) and repeat > 0:
+                random_x, random_y = _get_point_text_coordinates(point_x, point_y, repeat)
             return random_x, random_y
 
         for fact_id in self.predicate_to_fact_ids['Point']:
@@ -1828,7 +1844,7 @@ class GeometricConfiguration:
             )
             ax.text(x, y, point, ha='center', va='center', color='black', fontsize=radius * 10)
 
-        def _get_line_text_coordinates(line_k, line_b):
+        def _get_line_text_coordinates(line_k, line_b, repeat=10):
             if abs(line_k) > 1:  # sample y
                 if random_number.randint(0, 1) == 0:
                     random_y = random_number.uniform(center_y - radius * 1.1, center_y - radius)
@@ -1852,8 +1868,9 @@ class GeometricConfiguration:
             #
             # random_y = - 1 / line_k * x_step + random_y
 
-            if not _check_text_coordinates(random_x, random_y):
-                random_x, random_y = _get_line_text_coordinates(line_k, line_b)
+            repeat -= 1
+            if not _check_text_coordinates(random_x, random_y) and repeat > 0:
+                random_x, random_y = _get_line_text_coordinates(line_k, line_b, repeat)
             return random_x, random_y
 
         for fact_id in self.predicate_to_fact_ids['Line']:
@@ -1865,7 +1882,7 @@ class GeometricConfiguration:
             )
             ax.text(x, y, line, ha='center', va='center', color='black', fontsize=radius * 10)
 
-        def _get_circle_text_coordinates(circle_u, circle_v, circle_r):
+        def _get_circle_text_coordinates(circle_u, circle_v, circle_r, repeat=10):
             angle_deg = math.degrees(math.atan((center_y - circle_v) / (center_x - circle_u)))
             angle_deg = angle_deg + random_number.randint(-30, 30)
             if center_x < circle_u:
@@ -1875,8 +1892,9 @@ class GeometricConfiguration:
             random_x = circle_u + circle_r * math.cos(math.radians(angle_deg))
             random_y = circle_v + circle_r * math.sin(math.radians(angle_deg))
 
-            if not _check_text_coordinates(random_x, random_y):
-                random_x, random_y = _get_circle_text_coordinates(circle_u, circle_v, circle_r)
+            repeat -= 1
+            if not _check_text_coordinates(random_x, random_y) and repeat > 0:
+                random_x, random_y = _get_circle_text_coordinates(circle_u, circle_v, circle_r, repeat)
             return random_x, random_y
 
         for fact_id in self.predicate_to_fact_ids['Circle']:

@@ -6,7 +6,7 @@ src/em.egg-info
 .idea
 
 # data
-data
+data/notes
 
 # Qin Cheng project files
 /src/em/gcg_dev

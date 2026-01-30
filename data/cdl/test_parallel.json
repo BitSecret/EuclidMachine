@@ -1,0 +1,31 @@
+{
+  "random_seed": 0,
+  "constructions": [
+    "Point(A)&Point(B):FreePoint(A)&FreePoint(B)",
+    "Point(C):PointLeftSegment(C,A,B)",
+    "Circle(Ω):PointOnCircle(A,Ω)&PointOnCircle(B,Ω)&PointOnCircle(C,Ω)",
+    "Line(a):PointOnLine(A,a)&PointOnLine(B,a)",
+    "Line(b):PointOnLine(B,b)&PointOnLine(C,b)",
+    "Line(c):PointOnLine(C,c)&ParallelBetweenLine(c,a)",
+    "Line(d):PointOnLine(A,d)&ParallelBetweenLine(b,d)",
+    "Point(D):PointOnLine(D,d)&PointOnLine(D,c)",
+    "Line(l):PointOnLine(A,l)&PointOnLine(C,l)"
+  ],
+  "goals": "EqualDistancePointToPoint(A,B,C,D)&EqualDistancePointToPoint(D,A,B,C)",
+  "theorems": [
+    "apply:parallel_property_multiple_forms",
+    "apply:parallel_property_angle_equal",
+    "apply:equal_angle_property_algebraic",
+    "apply:line_property_adjacent_complementary_angle",
+    "apply:equal_angle_determination_algebraic",
+    "apply:triangle_determination",
+    "decompose:congruent_triangle_property_line_equal",
+    "decompose:congruent_triangle_property_multiple_forms",
+    "decompose:congruent_triangle_property_multiple_forms",
+    "decompose:congruent_triangle_determination_asa",
+    "decompose:equal_distance_point_to_point_determination_algebraic"
+  ],
+  "notes": [
+    "测试平行四边形"
+  ]
+}

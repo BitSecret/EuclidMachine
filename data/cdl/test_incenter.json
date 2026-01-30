@@ -1,0 +1,26 @@
+{
+  "random_seed": 0,
+  "constructions": [
+    "Point(A)&Point(B):FreePoint(A)&FreePoint(B)",
+    "Point(C):PointLeftSegment(C,A,B)",
+    "Line(a):PointOnLine(B,a)&PointOnLine(C,a)",
+    "Line(b):PointOnLine(A,b)&PointOnLine(C,b)",
+    "Line(c):PointOnLine(A,c)&PointOnLine(B,c)",
+    "Line(x):PointOnLine(A,x)&EqualAngle(b,x,x,c)",
+    "Line(y):PointOnLine(B,y)&EqualAngle(c,y,y,a)",
+    "Point(O):PointOnLine(O,x)&PointOnLine(O,y)",
+    "Line(z):PointOnLine(C,z)&PointOnLine(O,z)",
+    "Circle(Ω):PointOnCircle(A,Ω)&PointOnCircle(B,Ω)&PointOnCircle(C,Ω)"
+  ],
+  "goals": "AngleBisector(C,z,a,b)",
+  "theorems": [
+    "decompose:angle_bisector_determination_distance_equal",
+    "decompose:equal_distance_point_to_line_determination_algebraic",
+    "decompose:equal_distance_point_to_line_property_algebraic",
+    "apply:angle_bisector_determination_angle_equal",
+    "apply:angle_bisector_property_distance_equal"
+  ],
+  "notes": [
+    "测试三角形的内心"
+  ]
+}
